@@ -190,10 +190,12 @@ function budget_summary(?string $month = null): array
 function sync_all_cars_and_drivers_status(): void
 {
     try {
-        db()->exec("UPDATE cars SET status = 'available' WHERE status = 'used' AND id NOT IN (SELECT DISTINCT car_id FROM bookings WHERE status IN ('approved', 'running') AND car_id IS NOT NULL)");
-        db()->exec("UPDATE cars SET status = 'used' WHERE status NOT IN ('maintenance', 'inactive') AND id IN (SELECT DISTINCT car_id FROM bookings WHERE status IN ('approved', 'running') AND car_id IS NOT NULL)");
+        $activeCarsSql = "SELECT DISTINCT car_id FROM bookings WHERE (status = 'running' OR (status = 'approved' AND CURDATE() BETWEEN date AND COALESCE(return_date, date))) AND car_id IS NOT NULL";
+        db()->exec("UPDATE cars SET status = 'available' WHERE status = 'used' AND id NOT IN ($activeCarsSql)");
+        db()->exec("UPDATE cars SET status = 'used' WHERE status NOT IN ('maintenance', 'inactive') AND id IN ($activeCarsSql)");
 
-        db()->exec("UPDATE drivers SET status = 'available' WHERE status = 'assigned' AND id NOT IN (SELECT DISTINCT driver_id FROM bookings WHERE status IN ('approved', 'running') AND driver_id IS NOT NULL)");
-        db()->exec("UPDATE drivers SET status = 'assigned' WHERE status NOT IN ('leave', 'inactive') AND id IN (SELECT DISTINCT driver_id FROM bookings WHERE status IN ('approved', 'running') AND driver_id IS NOT NULL)");
+        $activeDriversSql = "SELECT DISTINCT driver_id FROM bookings WHERE (status = 'running' OR (status = 'approved' AND CURDATE() BETWEEN date AND COALESCE(return_date, date))) AND driver_id IS NOT NULL";
+        db()->exec("UPDATE drivers SET status = 'available' WHERE status = 'assigned' AND id NOT IN ($activeDriversSql)");
+        db()->exec("UPDATE drivers SET status = 'assigned' WHERE status NOT IN ('leave', 'inactive') AND id IN ($activeDriversSql)");
     } catch (Throwable $e) {}
 }

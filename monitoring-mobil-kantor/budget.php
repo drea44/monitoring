@@ -199,7 +199,6 @@ include __DIR__ . '/templates/sidebar.php';
     </div>
 </section>
 
-<!-- Filter Toolbar Riwayat -->
 <div class="card" style="margin-bottom:18px;padding:14px 20px">
     <form method="get" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <strong style="font-size:13px;color:var(--dark)">🔍 Pilih Periode Bulan:</strong>

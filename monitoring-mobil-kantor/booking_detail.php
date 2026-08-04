@@ -34,11 +34,15 @@ $page_title = 'Detail Perjalanan ' . $booking['code'];
 $page_subtitle = 'Detail booking, mobil, driver, penumpang, kilometer, uang jalan driver, dan nota.';
 $booking['return_date'] = $booking['return_date'] ?: $booking['date'];
 $totalKm = ($booking['km_start'] !== null && $booking['km_end'] !== null) ? (int)$booking['km_end'] - (int)$booking['km_start'] : null;
-$notaTotal = array_sum(array_map(fn($x) => (float)$x['amount'], $expenses));
+$notaTotal    = array_sum(array_map(fn($x) => (float)$x['amount'], $expenses));
+$fuelCost     = array_sum(array_map(fn($x) => $x['category'] === 'BBM' ? (float)$x['amount'] : 0, $expenses));
+$tollCost     = array_sum(array_map(fn($x) => $x['category'] === 'Tol' ? (float)$x['amount'] : 0, $expenses));
+$parkingCost  = array_sum(array_map(fn($x) => $x['category'] === 'Parkir' ? (float)$x['amount'] : 0, $expenses));
+$otherCost    = array_sum(array_map(fn($x) => !in_array($x['category'], ['BBM','Tol','Parkir']) ? (float)$x['amount'] : 0, $expenses));
 $allowanceUsed = (float)($booking['allowance'] ?? 0);
-$tripExpense = (float)$booking['fuel_cost'] + (float)$booking['toll_cost'] + (float)$booking['parking_cost'] + (float)$booking['other_cost'];
-$terpakai = min($allowanceUsed, $notaTotal);
-$sisaUang = max($allowanceUsed - $notaTotal, 0);
+// Terpakai = total nota riil yang dikeluarkan dalam perjalanan
+$terpakai      = $notaTotal;
+$sisaUang      = max($allowanceUsed - $notaTotal, 0);
 $kekuranganUang = max($notaTotal - $allowanceUsed, 0);
 
 include __DIR__ . '/templates/header.php';
@@ -163,6 +167,7 @@ $statusCardClass = match($booking['status']) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="form-group"><label>Uang Muka (UMK)</label><input class="input" type="number" min="0" step="any" name="advance_amount" value="<?= e($booking['advance_amount']) ?>"></div>
                     <div class="form-group"><label>Uang Jalan / Uang Saku Driver</label><input class="input" type="number" min="0" step="any" name="allowance" value="<?= e($allowanceUsed) ?>"></div>
                     <div class="form-group"><label>KM Berangkat</label><input class="input" type="number" min="0" max="999999999999999" step="1" name="km_start" value="<?= e($booking['km_start']) ?>"></div>
                     <div class="form-group"><label>KM Kembali</label><input class="input" type="number" min="0" max="999999999999999" step="1" name="km_end" value="<?= e($booking['km_end']) ?>"></div>
@@ -177,10 +182,10 @@ $statusCardClass = match($booking['status']) {
     <div class="card">
         <h2>Ringkasan Nota</h2>
         <div class="kpi-line"><span>Total Nota Upload</span><strong><?= e(rupiah($notaTotal)) ?></strong></div>
-        <div class="kpi-line"><span>BBM Tercatat</span><strong><?= e(rupiah($booking['fuel_cost'])) ?></strong></div>
-        <div class="kpi-line"><span>Tol Tercatat</span><strong><?= e(rupiah($booking['toll_cost'])) ?></strong></div>
-        <div class="kpi-line"><span>Parkir Tercatat</span><strong><?= e(rupiah($booking['parking_cost'])) ?></strong></div>
-        <div class="kpi-line"><span>Lainnya Tercatat</span><strong><?= e(rupiah($booking['other_cost'])) ?></strong></div>
+        <div class="kpi-line"><span>BBM Tercatat</span><strong><?= e(rupiah($fuelCost)) ?></strong></div>
+        <div class="kpi-line"><span>Tol Tercatat</span><strong><?= e(rupiah($tollCost)) ?></strong></div>
+        <div class="kpi-line"><span>Parkir Tercatat</span><strong><?= e(rupiah($parkingCost)) ?></strong></div>
+        <div class="kpi-line"><span>Lainnya Tercatat</span><strong><?= e(rupiah($otherCost)) ?></strong></div>
     </div>
 </section>
 

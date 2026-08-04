@@ -24,8 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $note = trim($_POST['note'] ?? '');
     $fileName = null;
 
-    if ($amount < 0) {
-        flash('danger', 'Nominal nota tidak boleh minus.');
+    if ($amount <= 0) {
+        flash('danger', 'Nominal nota harus lebih dari Rp 0.');
         redirect('expense_upload.php?booking_id=' . $bookingId);
     }
 

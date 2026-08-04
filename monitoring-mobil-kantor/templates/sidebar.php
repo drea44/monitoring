@@ -47,6 +47,14 @@ function nav_active(string $file, string $current): string { return $file === $c
             <?php if(nav_active('history.php', $current) === 'active'): ?><span class="nav-dot"></span><?php endif; ?>
         </a>
 
+        <a class="nav-item <?= nav_active('reports.php', $current) ?>" href="<?= e(base_path('reports.php')) ?>">
+            <span class="nav-icon">
+                <i class="ph-duotone ph-chart-bar"></i>
+            </span>
+            <span class="nav-label">Report Keuangan</span>
+            <?php if(nav_active('reports.php', $current) === 'active'): ?><span class="nav-dot"></span><?php endif; ?>
+        </a>
+
         <?php if (is_admin()): ?>
         <div class="nav-section nav-section-admin"><span>Admin</span></div>
 
@@ -64,30 +72,6 @@ function nav_active(string $file, string $current): string { return $file === $c
             </span>
             <span class="nav-label">Driver</span>
             <?php if(nav_active('drivers.php', $current) === 'active'): ?><span class="nav-dot"></span><?php endif; ?>
-        </a>
-
-        <a class="nav-item <?= nav_active('budget.php', $current) ?>" href="<?= e(base_path('budget.php')) ?>">
-            <span class="nav-icon">
-                <i class="ph-duotone ph-wallet"></i>
-            </span>
-            <span class="nav-label">Dropping Anggaran</span>
-            <?php if(nav_active('budget.php', $current) === 'active'): ?><span class="nav-dot"></span><?php endif; ?>
-        </a>
-
-        <a class="nav-item <?= nav_active('reports.php', $current) ?>" href="<?= e(base_path('reports.php')) ?>">
-            <span class="nav-icon">
-                <i class="ph-duotone ph-chart-bar"></i>
-            </span>
-            <span class="nav-label">Report Keuangan</span>
-            <?php if(nav_active('reports.php', $current) === 'active'): ?><span class="nav-dot"></span><?php endif; ?>
-        </a>
-
-        <a class="nav-item <?= nav_active('expenses.php', $current) ?>" href="<?= e(base_path('expenses.php')) ?>">
-            <span class="nav-icon">
-                <i class="ph-duotone ph-receipt"></i>
-            </span>
-            <span class="nav-label">Nota &amp; Pengeluaran</span>
-            <?php if(nav_active('expenses.php', $current) === 'active'): ?><span class="nav-dot"></span><?php endif; ?>
         </a>
 
         <a class="nav-item <?= nav_active('users.php', $current) ?>" href="<?= e(base_path('users.php')) ?>">

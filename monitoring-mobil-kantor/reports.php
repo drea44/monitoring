@@ -46,14 +46,39 @@ function build_report_transactions(string $from, string $to, string $carId, stri
     return $transactions;
 }
 
-function opening_balance_before(string $from): float
+function opening_balance_before(string $from, string $carId = '', string $driverId = '', string $status = '', string $type = ''): float
 {
-    try { $stmt=db()->prepare('SELECT COALESCE(SUM(amount),0) FROM budget_entries WHERE entry_date < ?'); $stmt->execute([$from]); $debit=(float)$stmt->fetchColumn(); } catch(Throwable $e){$debit=0;}
-    try { $stmt=db()->prepare("SELECT COALESCE(SUM(allowance),0) FROM bookings WHERE status<>'rejected' AND allowance>0 AND date < ?"); $stmt->execute([$from]); $credit=(float)$stmt->fetchColumn(); } catch(Throwable $e){$credit=0;}
+    // Jika ada filter spesifik mobil atau driver, Saldo Awal di-set 0
+    // karena kas induk dropping bersifat umum dan tidak dimiliki per armada/driver
+    if ($carId !== '' || $driverId !== '') {
+        return 0;
+    }
+
+    $debit = 0;
+    if ($type !== 'uang_jalan') {
+        try {
+            $stmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM budget_entries WHERE entry_date < ?');
+            $stmt->execute([$from]);
+            $debit = (float)$stmt->fetchColumn();
+        } catch (Throwable $e) { $debit = 0; }
+    }
+
+    $credit = 0;
+    if ($type === '' || $type === 'uang_jalan') {
+        $where = ["status<>'rejected'", 'allowance>0', 'date < ?'];
+        $params = [$from];
+        if ($status !== '') { $where[] = 'status = ?'; $params[] = $status; }
+        try {
+            $stmt = db()->prepare('SELECT COALESCE(SUM(allowance),0) FROM bookings WHERE ' . implode(' AND ', $where));
+            $stmt->execute($params);
+            $credit = (float)$stmt->fetchColumn();
+        } catch (Throwable $e) { $credit = 0; }
+    }
+
     return $debit - $credit;
 }
 
-$openingBalance = opening_balance_before($from);
+$openingBalance = opening_balance_before($from, (string)$carId, (string)$driverId, (string)$status, (string)$type);
 $transactions   = build_report_transactions($from, $to, (string)$carId, (string)$driverId, (string)$status, (string)$type, $keyword);
 $runningBalance = $openingBalance;
 $totalDebit = $totalCredit = $debitCount = $creditCount = 0;
@@ -87,12 +112,9 @@ if ($export === 'excel') {
 
  col.c-tanggal      { mso-column-width: 82pt; }
  col.c-jenis        { mso-column-width: 120pt; }
- col.c-remark       { mso-column-width: 200pt; }
  col.c-refno        { mso-column-width: 100pt; }
  col.c-mobil        { mso-column-width: 110pt; }
  col.c-driver       { mso-column-width: 110pt; }
- col.c-debit        { mso-column-width: 120pt; }
- col.c-credit       { mso-column-width: 120pt; }
  col.c-saldo        { mso-column-width: 130pt; }
 
  .title-cell {
@@ -145,30 +167,14 @@ if ($export === 'excel') {
 <body>
 
 <table style="width:100%;margin-bottom:4px">
- <tr><td class="title-cell" colspan="9">REPORT KEUANGAN OPERASIONAL MOBIL KANTOR</td></tr>
- <tr><td class="subtitle-cell" colspan="9">Periode : <?= e(tanggal_id($from)) ?> s/d <?= e(tanggal_id($to)) ?></td></tr>
+ <tr><td class="title-cell" colspan="6">REPORT KEUANGAN OPERASIONAL MOBIL KANTOR</td></tr>
+ <tr><td class="subtitle-cell" colspan="6">Periode : <?= e(tanggal_id($from)) ?> s/d <?= e(tanggal_id($to)) ?></td></tr>
 </table>
 
 <table style="margin-bottom:14px;border-collapse:collapse">
  <tr>
-  <td class="meta-label">Nama Akun</td>
-  <td class="meta-val-text" colspan="2">Dropping Anggaran Operasional Mobil</td>
- </tr>
- <tr>
   <td class="meta-label">Periode Laporan</td>
   <td class="meta-val-text" colspan="2"><?= e(tanggal_id($from)) ?> s/d <?= e(tanggal_id($to)) ?></td>
- </tr>
- <tr>
-  <td class="meta-label">Saldo Awal Periode</td>
-  <td class="meta-val-num" colspan="2"><?= (float)$openingBalance ?></td>
- </tr>
- <tr>
-  <td class="meta-label">Total Dropping (Debit / Masuk)</td>
-  <td class="meta-val-debit" colspan="2"><?= (float)$totalDebit ?></td>
- </tr>
- <tr>
-  <td class="meta-label">Total Uang Jalan (Kredit / Keluar)</td>
-  <td class="meta-val-credit" colspan="2"><?= (float)$totalCredit ?></td>
  </tr>
  <tr>
   <td class="meta-label">Saldo Akhir Periode</td>
@@ -180,24 +186,18 @@ if ($export === 'excel') {
  <colgroup>
   <col class="c-tanggal">
   <col class="c-jenis">
-  <col class="c-remark">
   <col class="c-refno">
   <col class="c-mobil">
   <col class="c-driver">
-  <col class="c-debit">
-  <col class="c-credit">
   <col class="c-saldo">
  </colgroup>
  <thead>
   <tr>
    <th class="th">Tanggal</th>
    <th class="th">Jenis Transaksi</th>
-   <th class="th">Keterangan / Remark</th>
    <th class="th">No. Referensi</th>
    <th class="th">Mobil</th>
    <th class="th">Driver</th>
-   <th class="th">Debit (Masuk)</th>
-   <th class="th">Kredit (Keluar)</th>
    <th class="th">Saldo Berjalan</th>
   </tr>
  </thead>
@@ -206,12 +206,9 @@ if ($export === 'excel') {
  <tr class="row-opening">
   <td class="td-center"><?= e(tanggal_id($from)) ?></td>
   <td class="td-center">Saldo Awal</td>
-  <td class="td-left">Saldo awal periode sebelum <?= e(tanggal_id($from)) ?></td>
   <td class="td-center">-</td>
   <td class="td-left">-</td>
   <td class="td-left">-</td>
-  <td class="td-num">0</td>
-  <td class="td-num">0</td>
   <td class="td-num" style="color:#2563EB"><?= (float)$openingBalance ?></td>
  </tr>
  <?php endif; ?>
@@ -219,26 +216,21 @@ if ($export === 'excel') {
  <tr class="<?= $i % 2 === 0 ? 'row-even' : 'row-odd' ?>">
   <td class="td-center"><?= e(tanggal_id($trx['date'])) ?></td>
   <td class="td-center"><?= e($trx['type']) ?></td>
-  <td class="td-left"><?= e($trx['remark']) ?></td>
   <td class="td-center"><?= e($trx['reference_no']) ?></td>
   <td class="td-left"><?= e($trx['car_name']) ?></td>
   <td class="td-left"><?= e($trx['driver_name']) ?></td>
-  <td class="<?= $trx['debit'] > 0 ? 'td-debit' : 'td-num' ?>"><?= (float)$trx['debit'] ?></td>
-  <td class="<?= $trx['credit'] > 0 ? 'td-credit' : 'td-num' ?>"><?= (float)$trx['credit'] ?></td>
   <td class="<?= $trx['balance'] >= 0 ? 'td-saldo-pos' : 'td-saldo-neg' ?>"><?= (float)$trx['balance'] ?></td>
  </tr>
  <?php endforeach; ?>
  <?php if (!$transactions): ?>
  <tr>
-  <td colspan="9" style="text-align:center;padding:20px;color:#94A3B8;border:1px solid #D1D5DB">Tidak ada transaksi pada periode ini.</td>
+  <td colspan="6" style="text-align:center;padding:20px;color:#94A3B8;border:1px solid #D1D5DB">Tidak ada transaksi pada periode ini.</td>
  </tr>
  <?php endif; ?>
  </tbody>
  <tfoot>
   <tr>
-   <td class="total-label" colspan="6">TOTAL PERIODE</td>
-   <td class="total-debit"><?= (float)$totalDebit ?></td>
-   <td class="total-credit"><?= (float)$totalCredit ?></td>
+   <td class="total-label" colspan="5">TOTAL PERIODE</td>
    <td class="total-saldo"><?= (float)$closingBalance ?></td>
   </tr>
  </tfoot>
@@ -277,57 +269,7 @@ include __DIR__ . '/templates/sidebar.php';
 <main class="main">
 <?php include __DIR__ . '/templates/topbar.php'; ?>
 
-<section class="grid grid-4" style="margin-bottom:22px">
-    <div class="card stat card-purple">
-        <div>
-            <span>Saldo Awal</span>
-            <strong style="font-size:18px"><?= e(rupiah($openingBalance)) ?></strong>
-            <small>sebelum periode</small>
-        </div>
-        <div class="icon">📂</div>
-    </div>
-    <div class="card stat card-green">
-        <div>
-            <span>Total Dropping</span>
-            <strong style="font-size:18px"><?= e(rupiah($totalDebit)) ?></strong>
-            <small><?= $debitCount ?> transaksi masuk</small>
-        </div>
-        <div class="icon">📥</div>
-    </div>
-    <div class="card stat card-orange">
-        <div>
-            <span>Total Uang Jalan</span>
-            <strong style="font-size:18px"><?= e(rupiah($totalCredit)) ?></strong>
-            <small><?= $creditCount ?> transaksi keluar</small>
-        </div>
-        <div class="icon">📤</div>
-    </div>
-    <div class="card stat <?= $closingBalance >= 0 ? 'card-blue' : 'card-red' ?>">
-        <div>
-            <span>Saldo Akhir</span>
-            <strong style="font-size:18px"><?= e(rupiah($closingBalance)) ?></strong>
-            <small><?= $closingBalance >= 0 ? 'tersedia' : '⚠ melebihi budget' ?></small>
-        </div>
-        <div class="icon">💼</div>
-    </div>
-</section>
 
-<section class="card" style="margin-bottom:18px">
-    <div class="report-info-grid">
-        <div>
-            <h2 style="margin-bottom:14px">Report Information</h2>
-            <div class="report-row"><span>Nama Akun</span><strong>Dropping Anggaran Operasional Mobil</strong></div>
-            <div class="report-row"><span>Opening Balance</span><strong style="color:var(--blue)"><?= e(rupiah($openingBalance)) ?></strong></div>
-            <div class="report-row"><span>Closing Balance</span><strong style="color:<?= $closingBalance >= 0 ? 'var(--green)' : 'var(--red)' ?>"><?= e(rupiah($closingBalance)) ?></strong></div>
-        </div>
-        <div>
-            <h2 style="margin-bottom:14px">Ringkasan Periode</h2>
-            <div class="report-row"><span>Periode</span><strong><?= e(tanggal_id($from) . ' s/d ' . tanggal_id($to)) ?></strong></div>
-            <div class="report-row"><span>Jumlah Debit (Masuk)</span><strong style="color:var(--green)"><?= $debitCount ?> transaksi — <?= e(rupiah($totalDebit)) ?></strong></div>
-            <div class="report-row"><span>Jumlah Kredit (Keluar)</span><strong style="color:var(--red)"><?= $creditCount ?> transaksi — <?= e(rupiah($totalCredit)) ?></strong></div>
-        </div>
-    </div>
-</section>
 
 <section class="card" style="margin-bottom:18px">
     <h2 style="margin-bottom:14px">Filter Transaksi</h2>
@@ -403,20 +345,16 @@ include __DIR__ . '/templates/sidebar.php';
                 <tr>
                     <th>Tanggal</th>
                     <th>Jenis</th>
-                    <th>Remark</th>
                     <th>Reference No.</th>
                     <th>Mobil</th>
                     <th>Driver</th>
-                    <th style="text-align:right;color:var(--green)">Debit (Masuk)</th>
-                    <th style="text-align:right;color:var(--red)">Kredit (Keluar)</th>
                     <th style="text-align:right">Saldo</th>
                 </tr>
             </thead>
             <tbody>
             <?php if ($openingBalance != 0): ?>
                 <tr style="background:var(--surface-2);font-style:italic">
-                    <td colspan="6" style="color:var(--muted);font-size:12px;padding-left:16px">Saldo Awal Periode</td>
-                    <td></td><td></td>
+                    <td colspan="5" style="color:var(--muted);font-size:12px;padding-left:16px">Saldo Awal Periode</td>
                     <td style="text-align:right;font-weight:800;color:var(--blue)"><?= e(rupiah($openingBalance)) ?></td>
                 </tr>
             <?php endif; ?>
@@ -428,7 +366,6 @@ include __DIR__ . '/templates/sidebar.php';
                             <?= $trx['type'] === 'Dropping Anggaran' ? '📥' : '📤' ?> <?= e($trx['type']) ?>
                         </span>
                     </td>
-                    <td style="font-size:12.5px;max-width:240px"><?= e($trx['remark']) ?></td>
                     <td>
                         <?php if ($trx['booking_id']): ?>
                             <a href="<?= e(base_path('booking_detail.php?id='.$trx['booking_id'])) ?>"
@@ -439,19 +376,13 @@ include __DIR__ . '/templates/sidebar.php';
                     </td>
                     <td style="font-size:12.5px"><?= e($trx['car_name']) ?></td>
                     <td style="font-size:12.5px"><?= e($trx['driver_name']) ?></td>
-                    <td style="text-align:right;color:<?= $trx['debit'] > 0 ? 'var(--green)' : 'var(--muted-2)' ?>;font-weight:<?= $trx['debit'] > 0 ? '800' : '400' ?>">
-                        <?= $trx['debit'] > 0 ? e(rupiah($trx['debit'])) : '—' ?>
-                    </td>
-                    <td style="text-align:right;color:<?= $trx['credit'] > 0 ? 'var(--red)' : 'var(--muted-2)' ?>;font-weight:<?= $trx['credit'] > 0 ? '800' : '400' ?>">
-                        <?= $trx['credit'] > 0 ? e(rupiah($trx['credit'])) : '—' ?>
-                    </td>
                     <td style="text-align:right">
                         <strong style="color:<?= $trx['balance'] >= 0 ? 'var(--text)' : 'var(--red)' ?>"><?= e(rupiah($trx['balance'])) ?></strong>
                     </td>
                 </tr>
             <?php endforeach; ?>
             <?php if (!$displayTransactions): ?>
-                <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">
                     📭 Tidak ada transaksi sesuai filter.
                 </td></tr>
             <?php endif; ?>
@@ -459,9 +390,7 @@ include __DIR__ . '/templates/sidebar.php';
             <?php if ($displayTransactions): ?>
             <tfoot>
                 <tr style="background:var(--surface-2);font-weight:900">
-                    <td colspan="6" style="padding:12px 16px;color:var(--muted);font-size:12px">TOTAL PERIODE</td>
-                    <td style="text-align:right;color:var(--green)"><?= e(rupiah($totalDebit)) ?></td>
-                    <td style="text-align:right;color:var(--red)"><?= e(rupiah($totalCredit)) ?></td>
+                    <td colspan="5" style="padding:12px 16px;color:var(--muted);font-size:12px">TOTAL PERIODE</td>
                     <td style="text-align:right;color:<?= $closingBalance >= 0 ? 'var(--blue)' : 'var(--red)' ?>"><?= e(rupiah($closingBalance)) ?></td>
                 </tr>
             </tfoot>

@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $destination = trim($_POST['destination'] ?? '');
     $purpose = trim($_POST['purpose'] ?? '');
     $passengerCount = max(1, (int)($_POST['passenger_count'] ?? 1));
+    $advanceAmount  = max(0, (float)($_POST['advance_amount'] ?? 0));
     $carId = !empty($_POST['car_id']) ? (int)$_POST['car_id'] : null;
     $driverId = !empty($_POST['driver_id']) ? (int)$_POST['driver_id'] : null;
     $passengers = array_filter(array_map('trim', $_POST['passengers'] ?? []));
@@ -42,23 +43,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($startDT >= $endDT) {
         flash('danger', 'Tanggal/jam pulang harus lebih besar dari tanggal/jam berangkat.');
     } else {
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $stmt = $pdo->prepare("INSERT INTO bookings (code, user_id, car_id, driver_id, date, return_date, start_time, end_time, destination, purpose, passenger_count, status)
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-            $stmt->execute([booking_code(), current_user()['id'], $carId, $driverId, $date, $returnDate, $start, $end, $destination, $purpose, $passengerCount]);
-            $bookingId = (int)$pdo->lastInsertId();
-            $passengerStmt = $pdo->prepare('INSERT INTO passengers (booking_id, name) VALUES (?, ?)');
-            foreach ($passengers as $name) {
-                $passengerStmt->execute([$bookingId, $name]);
+        // Validation server-side: Cek apakah mobil atau driver yang dipilih sudah dibooking pada rentang jam tersebut
+        $carBusy = false;
+        if ($carId) {
+            $stmtCar = db()->prepare("SELECT 1 FROM bookings
+                WHERE car_id = ?
+                  AND status IN ('pending','approved','running')
+                  AND TIMESTAMP(date, start_time) < TIMESTAMP(?, ?)
+                  AND TIMESTAMP(COALESCE(return_date, date), end_time) > TIMESTAMP(?, ?)");
+            $stmtCar->execute([$carId, $returnDate, $end, $date, $start]);
+            if ($stmtCar->fetchColumn()) $carBusy = true;
+        }
+
+        $driverBusy = false;
+        if ($driverId) {
+            $stmtDriver = db()->prepare("SELECT 1 FROM bookings
+                WHERE driver_id = ?
+                  AND status IN ('pending','approved','running')
+                  AND TIMESTAMP(date, start_time) < TIMESTAMP(?, ?)
+                  AND TIMESTAMP(COALESCE(return_date, date), end_time) > TIMESTAMP(?, ?)");
+            $stmtDriver->execute([$driverId, $returnDate, $end, $date, $start]);
+            if ($stmtDriver->fetchColumn()) $driverBusy = true;
+        }
+
+        if ($carBusy) {
+            flash('danger', 'Mobil yang dipilih sudah memiliki jadwal booking lain pada jam tersebut.');
+        } elseif ($driverBusy) {
+            flash('danger', 'Driver yang dipilih sudah memiliki jadwal tugas lain pada jam tersebut.');
+        } else {
+            $pdo = db();
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("INSERT INTO bookings (code, user_id, car_id, driver_id, date, return_date, start_time, end_time, destination, purpose, passenger_count, advance_amount, status)
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                $stmt->execute([booking_code(), current_user()['id'], $carId, $driverId, $date, $returnDate, $start, $end, $destination, $purpose, $passengerCount, $advanceAmount]);
+                $bookingId = (int)$pdo->lastInsertId();
+                $passengerStmt = $pdo->prepare('INSERT INTO passengers (booking_id, name) VALUES (?, ?)');
+                foreach ($passengers as $name) {
+                    $passengerStmt->execute([$bookingId, $name]);
+                }
+                $pdo->commit();
+                flash('success', 'Booking berhasil diajukan dan menunggu persetujuan admin.');
+                redirect('booking_detail.php?id=' . $bookingId);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                flash('danger', 'Gagal menyimpan booking: ' . $e->getMessage());
             }
-            $pdo->commit();
-            flash('success', 'Booking berhasil diajukan dan menunggu persetujuan admin.');
-            redirect('booking_detail.php?id=' . $bookingId);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            flash('danger', 'Gagal menyimpan booking: ' . $e->getMessage());
         }
     }
 }
@@ -90,6 +120,11 @@ include __DIR__ . '/templates/sidebar.php';
         <div class="form-group">
             <label>Jumlah Penumpang</label>
             <input class="input" type="number" name="passenger_count" min="1" value="<?= e($form['passenger_count']) ?>" required>
+        </div>
+        <div class="form-group">
+            <label>Uang Muka (UMK)</label>
+            <input class="input" type="number" min="0" step="any" name="advance_amount" value="<?= e($_POST['advance_amount'] ?? '0') ?>" placeholder="0">
+            <small class="text-muted" style="font-size:11px">Nominal UMK yang diajukan untuk perjalanan ini</small>
         </div>
         <div class="form-group full">
             <label>Tujuan</label>

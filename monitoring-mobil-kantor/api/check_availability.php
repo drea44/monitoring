@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_login();
+sync_all_cars_and_drivers_status();
 header('Content-Type: application/json');
 
 $date = $_GET['date'] ?? '';

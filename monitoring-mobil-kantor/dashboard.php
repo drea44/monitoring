@@ -255,7 +255,7 @@ include __DIR__ . '/templates/sidebar.php';
     </div>
     <div class="table-wrap">
         <table class="table">
-            <thead><tr><th>No.</th><th>Tanggal</th><th>Tujuan</th><th>Mobil</th><th>Driver</th><th>Status</th><th>Waktu Booking</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>No.</th><th>Tanggal</th><th>Tujuan</th><th>Mobil</th><th>Driver</th><th>Status</th><th>Jam Berangkat</th><th>Aksi</th></tr></thead>
             <tbody>
             <?php foreach ($recent as $idx => $row): ?>
                 <tr>

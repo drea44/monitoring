@@ -28,9 +28,12 @@ $stmt = db()->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
-$all = db()->query(
-    (!is_admin() ? "SELECT status FROM bookings WHERE user_id=" . (int)current_user()['id'] : "SELECT status FROM bookings")
-)->fetchAll(\PDO::FETCH_COLUMN);
+$stmtAll = is_admin()
+    ? db()->query("SELECT status FROM bookings")
+    : db()->prepare("SELECT status FROM bookings WHERE user_id = ?");
+if (!is_admin()) $stmtAll->execute([current_user()['id']]);
+else $stmtAll->execute();
+$all = $stmtAll->fetchAll(\PDO::FETCH_COLUMN);
 $counts = array_count_values($all);
 $totalAll = count($all);
 
@@ -39,49 +42,6 @@ include __DIR__ . '/templates/sidebar.php';
 ?>
 <main class="main">
 <?php include __DIR__ . '/templates/topbar.php'; ?>
-
-<section class="grid grid-5" style="margin-bottom:22px">
-    <div class="card stat card-blue" style="cursor:pointer" onclick="location='<?= e(base_path('history.php')) ?>'">
-        <div>
-            <span>Semua</span>
-            <strong><?= $totalAll ?></strong>
-            <small>total booking</small>
-        </div>
-        <div class="icon">📋</div>
-    </div>
-    <div class="card stat card-orange" style="cursor:pointer" onclick="location='<?= e(base_path('history.php?status=pending')) ?>'">
-        <div>
-            <span>Pending</span>
-            <strong><?= $counts['pending'] ?? 0 ?></strong>
-            <small>menunggu</small>
-        </div>
-        <div class="icon">⏳</div>
-    </div>
-    <div class="card stat card-blue" style="cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#0284c7)" onclick="location='<?= e(base_path('history.php?status=approved')) ?>'">
-        <div>
-            <span>Disetujui</span>
-            <strong><?= $counts['approved'] ?? 0 ?></strong>
-            <small>approved</small>
-        </div>
-        <div class="icon">✅</div>
-    </div>
-    <div class="card stat card-green" style="cursor:pointer" onclick="location='<?= e(base_path('history.php?status=completed')) ?>'">
-        <div>
-            <span>Selesai</span>
-            <strong><?= $counts['completed'] ?? 0 ?></strong>
-            <small>completed</small>
-        </div>
-        <div class="icon">🏁</div>
-    </div>
-    <div class="card stat" style="cursor:pointer;background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 12px 32px rgba(239,68,68,.38)" onclick="location='<?= e(base_path('history.php?status=rejected')) ?>'">
-        <div>
-            <span>Ditolak</span>
-            <strong><?= $counts['rejected'] ?? 0 ?></strong>
-            <small>rejected</small>
-        </div>
-        <div class="icon">❌</div>
-    </div>
-</section>
 
 <section class="card">
     <div class="calendar-toolbar" style="margin-bottom:16px">
@@ -140,7 +100,6 @@ include __DIR__ . '/templates/sidebar.php';
                     <th>Tujuan</th>
                     <th>Mobil</th>
                     <th>Driver</th>
-                    <th>Uang Jalan</th>
                     <th>Status</th>
                     <th style="text-align:center">Aksi</th>
                 </tr>
@@ -159,17 +118,11 @@ include __DIR__ . '/templates/sidebar.php';
                     <td style="font-size:13px"><?= e($row['requester']) ?></td>
                     <td>
                         <div style="font-weight:600;font-size:13px"><?= e($row['destination']) ?></div>
-                        <?php if (!empty($row['passengers'])): ?>
-                            <div style="font-size:11.5px;color:var(--muted)">👥 <?= e($row['passengers']) ?> penumpang</div>
-                        <?php endif; ?>
                     </td>
                     <td>
                         <div style="font-weight:600;font-size:13px"><?= e($row['car_name'] ?? '—') ?></div>
                     </td>
                     <td style="font-size:13px"><?= e($row['driver_name'] ?? '—') ?></td>
-                    <td style="font-weight:700;color:<?= $row['allowance'] > 0 ? 'var(--orange)' : 'var(--muted-2)' ?>">
-                        <?= $row['allowance'] > 0 ? e(rupiah($row['allowance'])) : '—' ?>
-                    </td>
                     <td>
                         <span class="badge <?= e(status_class($row['status'])) ?>"><?= e(status_label($row['status'])) ?></span>
                     </td>
@@ -180,7 +133,7 @@ include __DIR__ . '/templates/sidebar.php';
                 </tr>
             <?php endforeach; ?>
             <?php if(!$rows): ?>
-                <tr><td colspan="9" style="text-align:center;padding:48px;color:var(--muted)">
+                <tr><td colspan="8" style="text-align:center;padding:48px;color:var(--muted)">
                     <div style="font-size:36px;margin-bottom:10px">📭</div>
                     <div style="font-weight:700;font-size:15px;color:var(--text-2)">Tidak Ada Booking</div>
                     <div style="font-size:13px;margin-top:6px">Belum ada booking yang sesuai filter.</div>

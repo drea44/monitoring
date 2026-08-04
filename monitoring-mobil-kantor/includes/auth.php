@@ -24,7 +24,9 @@ function require_login(): void
     if (!current_user()) {
         redirect('login.php');
     }
-    sync_all_cars_and_drivers_status();
+    // Sync status mobil & driver dilakukan via polling live_stats.php (setiap 30 detik),
+    // di dashboard.php saat load, dan di setiap aksi perubahan status booking.
+    // Tidak perlu dijalankan di setiap halaman karena menjalankan 4 UPDATE query besar.
 }
 
 function require_admin(): void
