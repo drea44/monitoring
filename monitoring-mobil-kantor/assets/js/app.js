@@ -19,72 +19,150 @@ async function openBookingModal(id){
             `<option value="${d.id}" ${parseInt(b.driver_id) === parseInt(d.id) ? 'selected' : ''}>${escHtml(d.name)}</option>`
         ).join('')
 
-        body.innerHTML = `
-            <div class="detail-grid" style="margin-bottom:16px">
-                <div class="detail-item"><span>Kode Booking</span><strong>${escHtml(b.code)}</strong></div>
-                <div class="detail-item"><span>Status</span><strong>${escHtml(b.status_label)}</strong></div>
-                <div class="detail-item"><span>Tanggal Berangkat</span><strong>${escHtml(b.date_label)}</strong></div>
-                <div class="detail-item"><span>Tanggal Pulang</span><strong>${escHtml(b.return_date_label)}</strong></div>
-                <div class="detail-item"><span>Jam</span><strong>${escHtml(b.start_time)} - ${escHtml(b.end_time)}</strong></div>
-                <div class="detail-item"><span>Mobil</span><strong>${escHtml(b.car_name || '-')}</strong><small>${escHtml(b.plate_number || '')}</small></div>
-            </div>
+            // Status theme helper
+            const statusConfig = {
+                'pending':   { bg: '#fff7ed', border: '#fdba74', color: '#c2410c', icon: '⏳', label: 'Menunggu Persetujuan' },
+                'approved':  { bg: '#eff6ff', border: '#93c5fd', color: '#1d4ed8', icon: '✅', label: 'Disetujui' },
+                'running':   { bg: '#f0fdf4', border: '#86efac', color: '#15803d', icon: '🚗', label: 'Sedang Berjalan' },
+                'completed': { bg: '#faf5ff', border: '#d8b4fe', color: '#6b21a8', icon: '🏁', label: 'Selesai' },
+                'rejected':  { bg: '#fef2f2', border: '#fca5a5', color: '#b91c1c', icon: '❌', label: 'Ditolak' }
+            }
+            const st = statusConfig[b.status] || { bg: '#f8fafc', border: '#cbd5e1', color: '#475569', icon: '📌', label: b.status_label || b.status }
 
-            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
-                <h3 style="margin-bottom:14px;font-size:14px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:6px">
-                    ✏️ Input / Edit Detail Booking
-                </h3>
-                <div class="form-grid" style="gap:12px">
-                    <div class="form-group">
-                        <label style="font-size:12px;font-weight:700">Nama Driver</label>
-                        <select id="modal_driver_id" class="input" style="font-size:13px;padding:8px 10px">
-                            <option value="">-- Pilih Driver --</option>
-                            ${driverOptions}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:12px;font-weight:700">Durasi (Hari)</label>
-                        <input id="modal_durasi" class="input" type="number" min="1" value="${escHtml(String(b.durasi_hari || 1))}" style="font-size:13px;padding:8px 10px">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:12px;font-weight:700">Tujuan</label>
-                        <input id="modal_destination" class="input" type="text" value="${escHtml(b.destination || '')}" placeholder="Tujuan perjalanan" style="font-size:13px;padding:8px 10px">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:12px;font-weight:700">Uang Muka (UMK)</label>
-                        <input id="modal_advance" class="input" type="number" min="0" step="any" value="${b.advance_amount || 0}" readonly style="font-size:13px;padding:8px 10px;background:var(--bg-subtle)">
-                        <small class="text-muted" style="font-size:11px">Terkoneksi dengan booking mobil (read-only)</small>
+            const selisihVal = b.selisih_umk || 0
+            const selisihColor = selisihVal < 0 ? '#ef4444' : '#10b981'
+            const selisihLabel = selisihVal < 0 ? 'Kurang UMK' : 'Sisa UMK'
+
+            const passengerPills = (data.passengers || []).length
+                ? data.passengers.map(p => `
+                    <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:600;color:#334155">
+                        <span style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800">${escHtml(p.name.charAt(0).toUpperCase())}</span>
+                        ${escHtml(p.name)}
+                    </span>
+                `).join(' ')
+                : '<span style="color:#94a3b8;font-size:13px;font-style:italic">Tidak ada penumpang tercatat</span>'
+
+            body.innerHTML = `
+                <!-- Header Banner -->
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);border-radius:14px;padding:20px;margin-bottom:18px;color:#fff;box-shadow:0 8px 24px rgba(15,23,42,0.15);position:relative;overflow:hidden">
+                    <div style="position:absolute;right:-20px;top:-20px;font-size:120px;opacity:0.06;pointer-events:none">🚘</div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+                        <div>
+                            <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px;background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.5px;margin-bottom:8px">
+                                🔖 ${escHtml(b.code)}
+                            </div>
+                            <h2 style="font-size:20px;font-weight:800;margin:0 0 4px;color:#fff;line-height:1.3">
+                                ${escHtml(b.destination || 'Perjalanan Kantor')}
+                            </h2>
+                            <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.75);display:flex;align-items:center;gap:6px">
+                                📅 ${escHtml(b.date_label)} ${b.return_date_label !== b.date_label ? '&mdash; ' + escHtml(b.return_date_label) : ''}
+                                &bull; ⏰ ${escHtml(b.start_time)} - ${escHtml(b.end_time)} WIB
+                            </p>
+                        </div>
+                        <div>
+                            <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:${st.bg};border:1.5px solid ${st.border};color:${st.color};border-radius:30px;font-size:12.5px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                                ${st.icon} ${st.label}
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
-                    <button class="btn btn-success" onclick="saveBookingModal(${b.id})" style="font-size:13px;padding:8px 18px">💾 Simpan Perubahan</button>
-                    <span id="modal_save_msg" style="font-size:12px;font-weight:600"></span>
-                </div>
-            </div>
 
-            <div style="background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
-                <h3 style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-2)">📊 Ringkasan Keuangan Perjalanan</h3>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-                    <div style="padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-                        <div style="color:var(--muted);font-size:11.5px;margin-bottom:2px">UMK Diberikan</div>
-                        <strong style="color:var(--blue)">${escHtml(b.advance_label || 'Rp 0')}</strong>
+                <!-- Info Cards Grid -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:18px">
+                    <!-- Mobil & Plat -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px">
+                        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 10px rgba(59,130,246,0.3)">🚘</div>
+                        <div style="min-width:0;flex:1">
+                            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Mobil Kantor</div>
+                            <div style="font-size:14px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.car_name || 'Belum dipilih')}</div>
+                            ${b.plate_number ? `<span class="plate-tag" style="font-size:11px;padding:2px 8px;margin-top:2px">${escHtml(b.plate_number)}</span>` : ''}
+                        </div>
                     </div>
-                    <div style="padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-                        <div style="color:var(--muted);font-size:11.5px;margin-bottom:2px">Realisasi (Nota)</div>
-                        <strong style="color:var(--text)">${escHtml(b.nota_total_label || 'Rp 0')}</strong>
+
+                    <!-- Driver -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px">
+                        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#10b981,#047857);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 10px rgba(16,185,129,0.3)">👨‍✈️</div>
+                        <div style="min-width:0;flex:1">
+                            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Driver</div>
+                            <div style="font-size:14px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.driver_name || 'Belum ditugaskan')}</div>
+                        </div>
                     </div>
-                    <div style="padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);grid-column:span 2">
-                        <div style="color:var(--muted);font-size:11.5px;margin-bottom:2px">Lebih / Kurang UMK</div>
-                        <strong style="color:${(b.selisih_umk || 0) < 0 ? 'var(--red)' : 'var(--green)'}">${escHtml(b.selisih_umk_label || 'Rp 0')}</strong>
+
+                    <!-- Pemesan -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px">
+                        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 10px rgba(139,92,246,0.3)">👤</div>
+                        <div style="min-width:0;flex:1">
+                            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Pemesan</div>
+                            <div style="font-size:14px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.requester)}</div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <h3 style="margin-top:14px;font-size:13px;font-weight:700">Penumpang</h3>
-            <p style="font-size:13px;margin-bottom:14px">${data.passengers.length ? data.passengers.map(p=>escHtml(p.name)).join(', ') : '-'}</p>
-            <div class="actions" style="margin-top:14px">
-                <a class="btn btn-primary" href="booking_detail.php?id=${b.id}">Buka Detail Lengkap</a>
-            </div>
-        `
+                <!-- Financial Summary KPI Boxes -->
+                <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,0.03)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                        <h3 style="font-size:13px;font-weight:800;color:#1e293b;margin:0;display:flex;align-items:center;gap:6px">
+                            📊 Ringkasan Keuangan UMK & Realisasi Nota
+                        </h3>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+                        <div style="padding:12px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe">
+                            <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:2px">UMK Diberikan</div>
+                            <div style="font-size:16px;font-weight:900;color:#1e40af">${escHtml(b.advance_label || 'Rp 0')}</div>
+                        </div>
+                        <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">
+                            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:2px">Realisasi Nota</div>
+                            <div style="font-size:16px;font-weight:900;color:#0f172a">${escHtml(b.nota_total_label || 'Rp 0')}</div>
+                        </div>
+                        <div style="padding:12px;background:${selisihVal < 0 ? '#fef2f2' : '#f0fdf4'};border-radius:10px;border:1px solid ${selisihVal < 0 ? '#fca5a5' : '#86efac'}">
+                            <div style="font-size:11px;font-weight:700;color:${selisihColor};margin-bottom:2px">${selisihLabel}</div>
+                            <div style="font-size:16px;font-weight:900;color:${selisihColor}">${escHtml(b.selisih_umk_label || 'Rp 0')}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Quick Edit -->
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;margin-bottom:18px">
+                    <h3 style="margin:0 0 14px;font-size:13.5px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:6px">
+                        ✏️ Edit Detail Perjalanan
+                    </h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:11.5px;font-weight:700;color:#475569">Driver Ditugaskan</label>
+                            <select id="modal_driver_id" class="input" style="font-size:13px;padding:7px 10px;border-radius:8px">
+                                <option value="">-- Pilih Driver --</option>
+                                ${driverOptions}
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:11.5px;font-weight:700;color:#475569">Durasi (Hari)</label>
+                            <input id="modal_durasi" class="input" type="number" min="1" value="${escHtml(String(b.durasi_hari || 1))}" style="font-size:13px;padding:7px 10px;border-radius:8px">
+                        </div>
+                        <div class="form-group" style="margin:0;grid-column:span 2">
+                            <label style="font-size:11.5px;font-weight:700;color:#475569">Tujuan Perjalanan</label>
+                            <input id="modal_destination" class="input" type="text" value="${escHtml(b.destination || '')}" placeholder="Tujuan perjalanan" style="font-size:13px;padding:7px 10px;border-radius:8px">
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+                        <button onclick="saveBookingModal(${b.id})" style="padding:8px 18px;font-size:12.5px;font-weight:700;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:8px;cursor:pointer;box-shadow:0 3px 10px rgba(16,185,129,0.35);transition:all .15s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">💾 Simpan Perubahan</button>
+                        <span id="modal_save_msg" style="font-size:12px;font-weight:700"></span>
+                    </div>
+                </div>
+
+                <!-- Penumpang Section -->
+                <div style="margin-bottom:18px;padding:12px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:12px">
+                    <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">👥 Daftar Penumpang</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                        ${passengerPills}
+                    </div>
+                </div>
+
+                <!-- Footer Link Action -->
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid #e2e8f0">
+                    <button class="btn btn-outline btn-sm" onclick="closeModal('bookingModal')" style="border-radius:8px">Tutup</button>
+                    <a class="btn btn-primary" href="booking_detail.php?id=${b.id}" style="border-radius:8px;font-weight:700;box-shadow:0 4px 12px rgba(37,99,255,0.3)">🔗 Halaman Detail Lengkap →</a>
+                </div>
+            `
     }catch(err){
         body.innerHTML = '<p>Gagal memuat detail.</p>'
     }
@@ -269,10 +347,10 @@ async function openDayBookingsModal(date) {
                                 <th style="padding:10px 8px">USER (PENGGUNA)</th>
                                 <th style="padding:10px 8px">BIDANG (DEPT)</th>
                                 <th style="padding:10px 8px;min-width:120px">UMK (UANG MUKA)</th>
-                                <th style="padding:10px 8px;min-width:130px">REALISASI (NOTA)</th>
+                                <th style="padding:10px 8px;min-width:110px">REALISASI</th>
                                 <th style="padding:10px 8px">LEBIH / KURANG</th>
                                 <th style="padding:10px 8px">STATUS</th>
-                                <th style="padding:10px 8px">AKSI</th>
+                                <th style="padding:10px 8px;min-width:110px">AKSI</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -327,10 +405,20 @@ async function openDayBookingsModal(date) {
                         <td style="padding:10px 8px;vertical-align:middle">
                             <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:${st.bg};color:${st.color}">${st.label}</span>
                         </td>
-                        <td style="padding:10px 8px;vertical-align:middle">
-                            <button class="btn btn-success" style="font-size:11.5px;padding:5px 10px;margin-bottom:4px;display:block;width:100%;white-space:nowrap" onclick="saveSingleDayBooking(${b.id})">💾 Simpan</button>
-                            <a class="btn btn-outline" style="font-size:11px;padding:3px 8px;display:block;text-align:center;white-space:nowrap" href="booking_detail.php?id=${b.id}">🔗 Detail</a>
-                            <span id="day_msg_${b.id}" style="font-size:11px;display:block;margin-top:3px;font-weight:600;text-align:center"></span>
+                        <td style="padding:8px 10px;vertical-align:middle;min-width:110px">
+                            <button onclick="saveSingleDayBooking(${b.id})"
+                                style="width:100%;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 12px;font-size:12.5px;font-weight:700;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(16,185,129,.35);letter-spacing:.2px;margin-bottom:5px;transition:all .15s"
+                                onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(16,185,129,.45)'"
+                                onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(16,185,129,.35)'">
+                                💾 Simpan
+                            </button>
+                            <a href="booking_detail.php?id=${b.id}"
+                                style="width:100%;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 12px;font-size:12px;font-weight:600;background:#fff;color:var(--primary,#2563ff);border:1.5px solid var(--primary,#2563ff);border-radius:8px;text-decoration:none;white-space:nowrap;box-sizing:border-box;transition:all .15s"
+                                onmouseover="this.style.background='var(--blue-light,#eff6ff)'"
+                                onmouseout="this.style.background='#fff'">
+                                🔗 Detail
+                            </a>
+                            <span id="day_msg_${b.id}" style="font-size:11px;display:block;margin-top:5px;font-weight:700;text-align:center;min-height:14px"></span>
                         </td>
                     </tr>
                 `

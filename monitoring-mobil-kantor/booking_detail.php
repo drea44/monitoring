@@ -40,7 +40,7 @@ $tollCost     = array_sum(array_map(fn($x) => $x['category'] === 'Tol' ? (float)
 $parkingCost  = array_sum(array_map(fn($x) => $x['category'] === 'Parkir' ? (float)$x['amount'] : 0, $expenses));
 $otherCost    = array_sum(array_map(fn($x) => !in_array($x['category'], ['BBM','Tol','Parkir']) ? (float)$x['amount'] : 0, $expenses));
 $allowanceUsed = (float)($booking['allowance'] ?? 0);
-// Terpakai = total nota riil yang dikeluarkan dalam perjalanan
+
 $terpakai      = $notaTotal;
 $sisaUang      = max($allowanceUsed - $notaTotal, 0);
 $kekuranganUang = max($notaTotal - $allowanceUsed, 0);

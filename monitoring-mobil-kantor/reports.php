@@ -26,7 +26,19 @@ function build_report_transactions(string $from, string $to, string $carId, stri
         $stmt = db()->prepare('SELECT * FROM budget_entries WHERE ' . implode(' AND ', $where) . ' ORDER BY entry_date ASC, id ASC');
         $stmt->execute($params);
         foreach ($stmt->fetchAll() as $row) {
-            $transactions[] = ['date'=>$row['entry_date'],'sort_order'=>1,'type'=>'Dropping Anggaran','remark'=>$row['description']?:'Dropping anggaran operasional kendaraan','reference_no'=>$row['reference_no'],'debit'=>(float)$row['amount'],'credit'=>0,'car_name'=>'-','driver_name'=>'-','booking_id'=>null];
+            $transactions[] = [
+                'date'         => $row['entry_date'],
+                'sort_order'   => 1,
+                'type'         => 'Dropping Anggaran',
+                'remark'       => $row['description'] ?: 'Dropping anggaran operasional kendaraan',
+                'reference_no' => $row['reference_no'],
+                'debit'        => (float)$row['amount'],
+                'credit'       => 0,
+                'car_name'     => '-',
+                'plate_number' => '-',
+                'driver_name'  => '-',
+                'booking_id'   => null,
+            ];
         }
     }
     if ($type === '' || $type === 'uang_jalan') {
@@ -39,7 +51,19 @@ function build_report_transactions(string $from, string $to, string $carId, stri
         $stmt = db()->prepare("SELECT b.*, c.name car_name, c.plate_number, d.name driver_name FROM bookings b LEFT JOIN cars c ON c.id=b.car_id LEFT JOIN drivers d ON d.id=b.driver_id WHERE ".implode(' AND ',$where)." ORDER BY b.date ASC, b.id ASC");
         $stmt->execute($params);
         foreach ($stmt->fetchAll() as $row) {
-            $transactions[] = ['date'=>$row['date'],'sort_order'=>2,'type'=>'Uang Jalan Driver','remark'=>'Uang jalan '.$row['destination'].' - '.($row['driver_name']?:'Driver belum ditentukan').' ('.($row['car_name']?:'Mobil belum ditentukan').')','reference_no'=>$row['code'],'debit'=>0,'credit'=>(float)$row['allowance'],'car_name'=>$row['car_name']?:'-','driver_name'=>$row['driver_name']?:'-','booking_id'=>(int)$row['id']];
+            $transactions[] = [
+                'date'         => $row['date'],
+                'sort_order'   => 2,
+                'type'         => 'Uang Jalan Driver',
+                'remark'       => 'Uang jalan '.$row['destination'].' - '.($row['driver_name'] ?: 'Driver belum ditentukan').' ('.($row['car_name'] ?: 'Mobil belum ditentukan').')',
+                'reference_no' => $row['code'],
+                'debit'        => 0,
+                'credit'       => (float)$row['allowance'],
+                'car_name'     => $row['car_name']     ?: '-',
+                'plate_number' => $row['plate_number'] ?: '-',
+                'driver_name'  => $row['driver_name']  ?: '-',
+                'booking_id'   => (int)$row['id'],
+            ];
         }
     }
     usort($transactions, fn($a,$b) => [$a['date'],$a['sort_order'],$a['reference_no']] <=> [$b['date'],$b['sort_order'],$b['reference_no']]);
@@ -48,8 +72,6 @@ function build_report_transactions(string $from, string $to, string $carId, stri
 
 function opening_balance_before(string $from, string $carId = '', string $driverId = '', string $status = '', string $type = ''): float
 {
-    // Jika ada filter spesifik mobil atau driver, Saldo Awal di-set 0
-    // karena kas induk dropping bersifat umum dan tidak dimiliki per armada/driver
     if ($carId !== '' || $driverId !== '') {
         return 0;
     }
@@ -114,6 +136,7 @@ if ($export === 'excel') {
  col.c-jenis        { mso-column-width: 120pt; }
  col.c-refno        { mso-column-width: 100pt; }
  col.c-mobil        { mso-column-width: 110pt; }
+ col.c-plat         { mso-column-width: 90pt; }
  col.c-driver       { mso-column-width: 110pt; }
  col.c-saldo        { mso-column-width: 130pt; }
 
@@ -167,8 +190,8 @@ if ($export === 'excel') {
 <body>
 
 <table style="width:100%;margin-bottom:4px">
- <tr><td class="title-cell" colspan="6">REPORT KEUANGAN OPERASIONAL MOBIL KANTOR</td></tr>
- <tr><td class="subtitle-cell" colspan="6">Periode : <?= e(tanggal_id($from)) ?> s/d <?= e(tanggal_id($to)) ?></td></tr>
+ <tr><td class="title-cell" colspan="7">REPORT KEUANGAN OPERASIONAL MOBIL KANTOR</td></tr>
+ <tr><td class="subtitle-cell" colspan="7">Periode : <?= e(tanggal_id($from)) ?> s/d <?= e(tanggal_id($to)) ?></td></tr>
 </table>
 
 <table style="margin-bottom:14px;border-collapse:collapse">
@@ -188,6 +211,7 @@ if ($export === 'excel') {
   <col class="c-jenis">
   <col class="c-refno">
   <col class="c-mobil">
+  <col class="c-plat">
   <col class="c-driver">
   <col class="c-saldo">
  </colgroup>
@@ -197,6 +221,7 @@ if ($export === 'excel') {
    <th class="th">Jenis Transaksi</th>
    <th class="th">No. Referensi</th>
    <th class="th">Mobil</th>
+   <th class="th">Plat Nomor</th>
    <th class="th">Driver</th>
    <th class="th">Saldo Berjalan</th>
   </tr>
@@ -209,6 +234,7 @@ if ($export === 'excel') {
   <td class="td-center">-</td>
   <td class="td-left">-</td>
   <td class="td-left">-</td>
+  <td class="td-left">-</td>
   <td class="td-num" style="color:#2563EB"><?= (float)$openingBalance ?></td>
  </tr>
  <?php endif; ?>
@@ -218,19 +244,20 @@ if ($export === 'excel') {
   <td class="td-center"><?= e($trx['type']) ?></td>
   <td class="td-center"><?= e($trx['reference_no']) ?></td>
   <td class="td-left"><?= e($trx['car_name']) ?></td>
+  <td class="td-left"><?= e($trx['plate_number'] ?? '-') ?></td>
   <td class="td-left"><?= e($trx['driver_name']) ?></td>
   <td class="<?= $trx['balance'] >= 0 ? 'td-saldo-pos' : 'td-saldo-neg' ?>"><?= (float)$trx['balance'] ?></td>
  </tr>
  <?php endforeach; ?>
  <?php if (!$transactions): ?>
  <tr>
-  <td colspan="6" style="text-align:center;padding:20px;color:#94A3B8;border:1px solid #D1D5DB">Tidak ada transaksi pada periode ini.</td>
+  <td colspan="7" style="text-align:center;padding:20px;color:#94A3B8;border:1px solid #D1D5DB">Tidak ada transaksi pada periode ini.</td>
  </tr>
  <?php endif; ?>
  </tbody>
  <tfoot>
   <tr>
-   <td class="total-label" colspan="5">TOTAL PERIODE</td>
+   <td class="total-label" colspan="6">TOTAL PERIODE</td>
    <td class="total-saldo"><?= (float)$closingBalance ?></td>
   </tr>
  </tfoot>
@@ -347,6 +374,7 @@ include __DIR__ . '/templates/sidebar.php';
                     <th>Jenis</th>
                     <th>Reference No.</th>
                     <th>Mobil</th>
+                    <th>Plat Nomor</th>
                     <th>Driver</th>
                     <th style="text-align:right">Saldo</th>
                 </tr>
@@ -354,7 +382,7 @@ include __DIR__ . '/templates/sidebar.php';
             <tbody>
             <?php if ($openingBalance != 0): ?>
                 <tr style="background:var(--surface-2);font-style:italic">
-                    <td colspan="5" style="color:var(--muted);font-size:12px;padding-left:16px">Saldo Awal Periode</td>
+                    <td colspan="6" style="color:var(--muted);font-size:12px;padding-left:16px">Saldo Awal Periode</td>
                     <td style="text-align:right;font-weight:800;color:var(--blue)"><?= e(rupiah($openingBalance)) ?></td>
                 </tr>
             <?php endif; ?>
@@ -375,6 +403,13 @@ include __DIR__ . '/templates/sidebar.php';
                         <?php endif; ?>
                     </td>
                     <td style="font-size:12.5px"><?= e($trx['car_name']) ?></td>
+                    <td style="font-size:12.5px">
+                        <?php if (($trx['plate_number'] ?? '-') !== '-'): ?>
+                            <span class="plate-tag" style="font-size:11.5px"><?= e($trx['plate_number']) ?></span>
+                        <?php else: ?>
+                            <span style="color:var(--muted)">-</span>
+                        <?php endif; ?>
+                    </td>
                     <td style="font-size:12.5px"><?= e($trx['driver_name']) ?></td>
                     <td style="text-align:right">
                         <strong style="color:<?= $trx['balance'] >= 0 ? 'var(--text)' : 'var(--red)' ?>"><?= e(rupiah($trx['balance'])) ?></strong>
@@ -382,7 +417,7 @@ include __DIR__ . '/templates/sidebar.php';
                 </tr>
             <?php endforeach; ?>
             <?php if (!$displayTransactions): ?>
-                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">
+                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">
                     📭 Tidak ada transaksi sesuai filter.
                 </td></tr>
             <?php endif; ?>
@@ -390,7 +425,7 @@ include __DIR__ . '/templates/sidebar.php';
             <?php if ($displayTransactions): ?>
             <tfoot>
                 <tr style="background:var(--surface-2);font-weight:900">
-                    <td colspan="5" style="padding:12px 16px;color:var(--muted);font-size:12px">TOTAL PERIODE</td>
+                    <td colspan="6" style="padding:12px 16px;color:var(--muted);font-size:12px">TOTAL PERIODE</td>
                     <td style="text-align:right;color:<?= $closingBalance >= 0 ? 'var(--blue)' : 'var(--red)' ?>"><?= e(rupiah($closingBalance)) ?></td>
                 </tr>
             </tfoot>
