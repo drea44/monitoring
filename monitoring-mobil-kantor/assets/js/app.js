@@ -196,6 +196,8 @@ async function saveBookingModal(bookingId){
         const data = await res.json()
         if(data.ok){
             if(msg){ msg.textContent = '✅ Tersimpan!'; msg.style.color = 'var(--green)' }
+            if (typeof updateRealTimeStats === 'function') updateRealTimeStats();
+            if (typeof pollNotifCount === 'function') pollNotifCount();
             setTimeout(() => { location.reload() }, 1000)
         } else {
             if(msg){ msg.textContent = '❌ ' + (data.message || 'Gagal'); msg.style.color = 'var(--red)' }
@@ -467,6 +469,8 @@ async function saveSingleDayBooking(bookingId) {
         const data = await res.json()
         if (data.ok) {
             if (msg) { msg.textContent = '✅ Tersimpan!'; msg.style.color = 'var(--green)' }
+            if (typeof updateRealTimeStats === 'function') updateRealTimeStats();
+            if (typeof pollNotifCount === 'function') pollNotifCount();
             setTimeout(() => { if (msg) msg.textContent = '' }, 2500)
         } else {
             if (msg) { msg.textContent = '❌ ' + (data.message || 'Gagal'); msg.style.color = 'var(--red)' }
@@ -513,5 +517,5 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() {
         if (typeof updateRealTimeStats === 'function') updateRealTimeStats();
         if (typeof pollNotifCount === 'function') pollNotifCount();
-    }, 30000);
+    }, 5000);
 });

@@ -15,7 +15,8 @@ try {
 
     if (is_admin()) {
         $sum = budget_summary();
-        $sisa = (float)($sum['dropping'] ?? 0) - (float)($sum['allowance'] ?? 0);
+        $totalUsed = (float)($sum['allowance'] ?? 0) + (float)($sum['expense'] ?? 0);
+        $sisa = (float)($sum['dropping'] ?? 0) - $totalUsed;
         if ($sisa < 10000000) {
             $allNotifs[] = ['id' => 'budget_warning_' . date('Y-m-d')];
         }

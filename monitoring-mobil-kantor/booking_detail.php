@@ -157,6 +157,10 @@ $statusCardClass = match($booking['status']) {
             <a class="btn btn-primary" href="<?= e(base_path('expense_upload.php?booking_id=' . $booking['id'])) ?>">Upload Nota</a>
         </div>
         <?php if (is_admin()): ?>
+            <?php
+            $allCars = db()->query("SELECT id, name, plate_number FROM cars WHERE status != 'inactive' ORDER BY name")->fetchAll();
+            $allDrivers = db()->query("SELECT id, name FROM drivers WHERE status != 'inactive' ORDER BY name")->fetchAll();
+            ?>
             <form method="post" action="<?= e(base_path('actions_booking.php')) ?>" class="grid" style="margin-top:16px">
                 <input type="hidden" name="booking_id" value="<?= (int)$booking['id'] ?>">
                 <div class="form-grid">
@@ -164,6 +168,26 @@ $statusCardClass = match($booking['status']) {
                         <select name="status">
                             <?php foreach (['pending','approved','running','completed','rejected'] as $s): ?>
                                 <option value="<?= e($s) ?>" <?= $booking['status']===$s?'selected':'' ?>><?= e(status_label($s)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Mobil Ditugaskan</label>
+                        <select name="car_id">
+                            <option value="">-- Pilih Mobil --</option>
+                            <?php foreach ($allCars as $ac): ?>
+                                <option value="<?= (int)$ac['id'] ?>" <?= (int)$booking['car_id'] === (int)$ac['id'] ? 'selected' : '' ?>>
+                                    <?= e($ac['name']) ?> (<?= e($ac['plate_number']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Driver Ditugaskan</label>
+                        <select name="driver_id">
+                            <option value="">-- Pilih Driver --</option>
+                            <?php foreach ($allDrivers as $ad): ?>
+                                <option value="<?= (int)$ad['id'] ?>" <?= (int)$booking['driver_id'] === (int)$ad['id'] ? 'selected' : '' ?>>
+                                    <?= e($ad['name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>

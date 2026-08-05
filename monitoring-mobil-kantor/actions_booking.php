@@ -27,10 +27,15 @@ function parse_km_value(string $value, string $label, int $bookingId): ?int
 $kmStart = parse_km_value($kmStartRaw, 'KM Berangkat', $id);
 $kmEnd = parse_km_value($kmEndRaw, 'KM Kembali', $id);
 
-// Pertahankan KM lama dari DB jika input dikosongkan saat submit form
-$existingBookingStmt = db()->prepare('SELECT km_start, km_end FROM bookings WHERE id=?');
+$carIdInput = array_key_exists('car_id', $_POST) ? (!empty($_POST['car_id']) ? (int)$_POST['car_id'] : null) : null;
+$driverIdInput = array_key_exists('driver_id', $_POST) ? (!empty($_POST['driver_id']) ? (int)$_POST['driver_id'] : null) : null;
+
+$existingBookingStmt = db()->prepare('SELECT date, return_date, start_time, end_time, car_id, driver_id, km_start, km_end FROM bookings WHERE id=?');
 $existingBookingStmt->execute([$id]);
 $existingBooking = $existingBookingStmt->fetch();
+
+$carId = $existingBooking ? $existingBooking['car_id'] : null;
+$driverId = $existingBooking ? $existingBooking['driver_id'] : null;
 
 if ($existingBooking) {
     if ($kmStartRaw === '' && $existingBooking['km_start'] !== null) {
@@ -38,6 +43,12 @@ if ($existingBooking) {
     }
     if ($kmEndRaw === '' && $existingBooking['km_end'] !== null) {
         $kmEnd = (int)$existingBooking['km_end'];
+    }
+    if (array_key_exists('car_id', $_POST)) {
+        $carId = $carIdInput;
+    }
+    if (array_key_exists('driver_id', $_POST)) {
+        $driverId = $driverIdInput;
     }
 }
 
@@ -53,11 +64,11 @@ if ($kmStart !== null && $kmEnd !== null && $kmEnd < $kmStart) {
 
 try {
     if ($advanceAmount !== null) {
-        $stmt = db()->prepare('UPDATE bookings SET status=?, allowance=?, advance_amount=?, km_start=?, km_end=?, admin_note=? WHERE id=?');
-        $stmt->execute([$status, $allowance, $advanceAmount, $kmStart, $kmEnd, $note, $id]);
+        $stmt = db()->prepare('UPDATE bookings SET status=?, car_id=?, driver_id=?, allowance=?, advance_amount=?, km_start=?, km_end=?, admin_note=? WHERE id=?');
+        $stmt->execute([$status, $carId, $driverId, $allowance, $advanceAmount, $kmStart, $kmEnd, $note, $id]);
     } else {
-        $stmt = db()->prepare('UPDATE bookings SET status=?, allowance=?, km_start=?, km_end=?, admin_note=? WHERE id=?');
-        $stmt->execute([$status, $allowance, $kmStart, $kmEnd, $note, $id]);
+        $stmt = db()->prepare('UPDATE bookings SET status=?, car_id=?, driver_id=?, allowance=?, km_start=?, km_end=?, admin_note=? WHERE id=?');
+        $stmt->execute([$status, $carId, $driverId, $allowance, $kmStart, $kmEnd, $note, $id]);
     }
 
     if ($status === 'completed' && $kmEnd !== null) {
