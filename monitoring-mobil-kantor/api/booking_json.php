@@ -27,12 +27,10 @@ $stmt = db()->prepare('SELECT name FROM passengers WHERE booking_id = ? ORDER BY
 $stmt->execute([$id]);
 $passengers = $stmt->fetchAll();
 
-// Hitung durasi
 $dateStart = new DateTime($booking['date']);
 $dateEnd   = new DateTime($booking['return_date'] ?: $booking['date']);
 $durasiHari = (int)$dateStart->diff($dateEnd)->days + 1;
 
-// Ambil daftar driver aktif
 $stmtDrivers = db()->prepare("SELECT id, name FROM drivers WHERE status != 'inactive' ORDER BY name");
 $stmtDrivers->execute();
 $allDrivers = $stmtDrivers->fetchAll();
@@ -41,9 +39,9 @@ $totalKm = ($booking['km_start'] !== null && $booking['km_end'] !== null) ? ((in
 $allowanceUsed = (float)($booking['allowance'] ?? 0);
 $advanceAmt    = (float)($booking['advance_amount'] ?? 0);
 $notaTotal     = (float)($booking['nota_total'] ?? 0);
-// Sisa uang muka = UMK - total nota
+
 $selisihUMK    = $advanceAmt - $notaTotal;
-// Sisa uang jalan driver = allowance - nota
+
 $sisaUangJalan = max($allowanceUsed - $notaTotal, 0);
 $kekurangan    = max($notaTotal - $allowanceUsed, 0);
 

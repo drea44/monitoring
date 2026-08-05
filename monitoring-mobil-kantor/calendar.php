@@ -97,7 +97,6 @@ include __DIR__ . '/templates/sidebar.php';
     </div>
 </section>
 
-<!-- TABEL MATRIKS JADWAL PENGGUNAAN MOBIL PER HARI -->
 <section class="card" style="margin-top:24px">
     <div class="calendar-toolbar">
         <div>
@@ -125,7 +124,7 @@ include __DIR__ . '/templates/sidebar.php';
             <tbody>
                 <?php
                 $hasRows = false;
-                // Loop tanggal dalam bulan ini
+                
                 $daysInMonth = (int)$firstDay->format('t');
                 for ($d = 1; $d <= $daysInMonth; $d++):
                     $currentDateStr = $firstDay->format('Y-m-') . sprintf('%02d', $d);

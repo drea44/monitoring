@@ -43,7 +43,6 @@ foreach ($rawBookings as $b) {
     $allowance  = (float)($b['allowance'] ?? 0);    // Uang Jalan Driver
     $notaTotal  = (float)($b['nota_total'] ?? 0);   // Total nota/expense riil
 
-    // Selisih = UMK - Realisasi (nota riil), bukan UMK - allowance
     $selisih = $advanceAmt - $notaTotal;
 
     $b['durasi_hari']    = $durasiHari;
