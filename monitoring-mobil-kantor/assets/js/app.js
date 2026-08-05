@@ -19,7 +19,6 @@ async function openBookingModal(id){
             `<option value="${d.id}" ${parseInt(b.driver_id) === parseInt(d.id) ? 'selected' : ''}>${escHtml(d.name)}</option>`
         ).join('')
 
-            // Status theme helper
             const statusConfig = {
                 'pending':   { bg: '#fff7ed', border: '#fdba74', color: '#c2410c', icon: '⏳', label: 'Menunggu Persetujuan' },
                 'approved':  { bg: '#eff6ff', border: '#93c5fd', color: '#1d4ed8', icon: '✅', label: 'Disetujui' },
@@ -160,7 +159,7 @@ async function openBookingModal(id){
                 <!-- Footer Link Action -->
                 <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid #e2e8f0">
                     <button class="btn btn-outline btn-sm" onclick="closeModal('bookingModal')" style="border-radius:8px">Tutup</button>
-                    <a class="btn btn-primary" href="booking_detail.php?id=${b.id}" style="border-radius:8px;font-weight:700;box-shadow:0 4px 12px rgba(37,99,255,0.3)">🔗 Halaman Detail Lengkap →</a>
+                    <a class="btn btn-primary" href="booking_detail.php?id=${b.id}" style="border-radius:8px;font-weight:700;box-shadow:0 4px 12px rgba(37,99,255,0.3)">Halaman Detail Lengkap &rarr;</a>
                 </div>
             `
     }catch(err){
@@ -396,9 +395,9 @@ async function openDayBookingsModal(date) {
                             <strong style="font-size:13px;color:var(--primary)">${formatRupiah(advanceAmt)}</strong>
                         </td>
                         <td style="padding:10px 8px;vertical-align:middle">
-                            <input id="day_nota_${b.id}" class="input" type="number" min="0" step="any"
-                                value="${notaTotal}"
-                                oninput="calcDaySelisih(${b.id})"
+                            <input id="day_nota_${b.id}" class="input input-currency" type="text" inputmode="numeric"
+                                value="${formatThousands(notaTotal)}"
+                                oninput="formatCurrencyInput(this); calcDaySelisih(${b.id})"
                                 style="font-size:12px;padding:5px 8px;width:120px;border-radius:6px">
                         </td>
                         <td style="padding:10px 8px;vertical-align:middle">
@@ -418,7 +417,7 @@ async function openDayBookingsModal(date) {
                                 style="width:100%;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 12px;font-size:12px;font-weight:600;background:#fff;color:var(--primary,#2563ff);border:1.5px solid var(--primary,#2563ff);border-radius:8px;text-decoration:none;white-space:nowrap;box-sizing:border-box;transition:all .15s"
                                 onmouseover="this.style.background='var(--blue-light,#eff6ff)'"
                                 onmouseout="this.style.background='#fff'">
-                                🔗 Detail
+                                Detail
                             </a>
                             <span id="day_msg_${b.id}" style="font-size:11px;display:block;margin-top:5px;font-weight:700;text-align:center;min-height:14px"></span>
                         </td>
@@ -440,9 +439,16 @@ async function openDayBookingsModal(date) {
     }
 }
 
+function formatCurrencyInput(el) {
+    if (!el) return
+    const raw = el.value.replace(/\D/g, '')
+    el.value = raw ? formatThousands(raw) : ''
+}
+
 function calcDaySelisih(id) {
     const adv = parseFloat(document.getElementById(`day_adv_${id}`)?.value || 0)
-    const notaTotal = parseFloat(document.getElementById(`day_nota_${id}`)?.value || 0)
+    const rawNota = (document.getElementById(`day_nota_${id}`)?.value || '').replace(/\D/g, '')
+    const notaTotal = parseFloat(rawNota || 0)
     const selisih = adv - notaTotal
     const el = document.getElementById(`day_selisih_${id}`)
     if (el) {
@@ -452,7 +458,8 @@ function calcDaySelisih(id) {
 }
 
 async function saveSingleDayBooking(bookingId) {
-    const realisasi = document.getElementById(`day_nota_${bookingId}`)?.value
+    const rawRealisasi = (document.getElementById(`day_nota_${bookingId}`)?.value || '').replace(/\D/g, '')
+    const realisasi = parseFloat(rawRealisasi || 0)
     const msg       = document.getElementById(`day_msg_${bookingId}`)
 
     if (msg) { msg.textContent = 'Menyimpan...'; msg.style.color = 'var(--muted)' }
@@ -510,7 +517,48 @@ async function pollNotifCount() {
     } catch (err) {}
 }
 
+function formatThousands(val) {
+    if (!val && val !== 0) return ''
+    const digits = val.toString().replace(/\D/g, '')
+    if (!digits) return ''
+    return new Intl.NumberFormat('id-ID').format(parseInt(digits, 10))
+}
+
+function initCurrencyInputs() {
+    const selector = 'input.input-currency, input[name="advance_amount"], input[name="allowance"], input[name="amount"]'
+    document.querySelectorAll(selector).forEach(input => {
+        if (input.dataset.currencyBound) return
+        input.dataset.currencyBound = 'true'
+
+        if (input.type === 'number') {
+            input.type = 'text'
+            input.setAttribute('inputmode', 'numeric')
+        }
+
+        if (input.value) {
+            const raw = input.value.replace(/\D/g, '')
+            if (raw) input.value = formatThousands(raw)
+        }
+
+        input.addEventListener('input', function() {
+            const raw = this.value.replace(/\D/g, '')
+            this.value = raw ? formatThousands(raw) : ''
+        })
+
+        const form = input.closest('form')
+        if (form && !form.dataset.currencyHandled) {
+            form.dataset.currencyHandled = 'true'
+            form.addEventListener('submit', function() {
+                form.querySelectorAll(selector).forEach(curInput => {
+                    curInput.value = curInput.value.replace(/\D/g, '')
+                })
+            })
+        }
+    })
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    initCurrencyInputs();
     if (typeof updateRealTimeStats === 'function') updateRealTimeStats();
     if (typeof pollNotifCount === 'function') pollNotifCount();
 

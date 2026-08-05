@@ -87,6 +87,7 @@ include __DIR__ . '/templates/sidebar.php';
             <p class="text-muted"><?= count($expenses) ?> nota ditemukan</p>
         </div>
         <div class="actions">
+            <button type="button" class="btn-back-icon" onclick="history.back()" title="Kembali">‹</button>
             <?php if ($unverifiedCount > 0): ?>
                 <span id="statUnverifiedBadge" class="badge badge-warning" style="font-size:13px;padding:7px 14px">
                     ⚠️ <span id="badgeUnverifiedCount"><?= $unverifiedCount ?></span> belum diverifikasi

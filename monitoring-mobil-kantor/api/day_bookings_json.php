@@ -28,7 +28,6 @@ $stmt = db()->prepare($sql);
 $stmt->execute($params);
 $rawBookings = $stmt->fetchAll();
 
-// List driver aktif
 $stmtDrivers = db()->prepare("SELECT id, name FROM drivers WHERE status != 'inactive' ORDER BY name");
 $stmtDrivers->execute();
 $allDrivers = $stmtDrivers->fetchAll();
@@ -40,8 +39,8 @@ foreach ($rawBookings as $b) {
     $durasiHari = (int)$dateStart->diff($dateEnd)->days + 1;
 
     $advanceAmt = (float)($b['advance_amount'] ?? 0);
-    $allowance  = (float)($b['allowance'] ?? 0);    // Uang Jalan Driver
-    $notaTotal  = (float)($b['nota_total'] ?? 0);   // Total nota/expense riil
+    $allowance  = (float)($b['allowance'] ?? 0);
+    $notaTotal  = (float)($b['nota_total'] ?? 0);
 
     $selisih = $advanceAmt - $notaTotal;
 

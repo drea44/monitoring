@@ -8,8 +8,8 @@ $id = (int)($_POST['booking_id'] ?? 0);
 $status = $_POST['status'] ?? 'pending';
 $allowed = ['pending','approved','running','completed','rejected'];
 if (!in_array($status, $allowed, true)) $status = 'pending';
-$allowance = (float)($_POST['allowance'] ?? 0);
-$advanceAmount = array_key_exists('advance_amount', $_POST) ? max(0, (float)$_POST['advance_amount']) : null;
+$allowance = (float)preg_replace('/\D/', '', (string)($_POST['allowance'] ?? 0));
+$advanceAmount = array_key_exists('advance_amount', $_POST) ? max(0, (float)preg_replace('/\D/', '', (string)$_POST['advance_amount'])) : null;
 $kmStartRaw = trim((string)($_POST['km_start'] ?? ''));
 $kmEndRaw = trim((string)($_POST['km_end'] ?? ''));
 $note = trim($_POST['admin_note'] ?? '');
@@ -71,13 +71,8 @@ try {
         $stmt->execute([$status, $carId, $driverId, $allowance, $kmStart, $kmEnd, $note, $id]);
     }
 
-    if ($status === 'completed' && $kmEnd !== null) {
-        $stmt = db()->prepare('SELECT car_id FROM bookings WHERE id=?');
-        $stmt->execute([$id]);
-        $carId = (int)$stmt->fetchColumn();
-        if ($carId > 0) {
-            db()->prepare('UPDATE cars SET last_km=? WHERE id=?')->execute([(int)$kmEnd, $carId]);
-        }
+    if ($status === 'completed' && $kmEnd !== null && $carId > 0) {
+        db()->prepare('UPDATE cars SET last_km=? WHERE id=?')->execute([(int)$kmEnd, (int)$carId]);
     }
 
     sync_all_cars_and_drivers_status();

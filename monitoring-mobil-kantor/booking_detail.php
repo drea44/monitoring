@@ -54,11 +54,23 @@ include __DIR__ . '/templates/sidebar.php';
 <?php
 $statusCardClass = match($booking['status']) {
     'approved', 'running' => 'card-blue',
-    'completed' => 'card-green',
-    'rejected'  => 'card-red',
-    default     => 'card-orange'
+    'completed'           => 'card-green',
+    'rejected'            => 'card-red',
+    default               => 'card-orange',
 };
 ?>
+<div class="calendar-toolbar" style="margin-bottom:16px;background:#fff;padding:14px 20px;border-radius:12px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px">
+        <button type="button" class="btn-back-icon" onclick="if(window.history.length > 1 && document.referrer){ history.back(); } else { location.href='<?= e(base_path('calendar.php')) ?>'; }" title="Kembali">‹</button>
+        <span style="color:var(--border)">|</span>
+        <span style="font-weight:700;color:var(--text);font-size:14px">Detail Booking Perjalanan <?= e($booking['code']) ?></span>
+    </div>
+    <div class="actions" style="gap:8px">
+        <a class="btn btn-outline btn-sm" href="<?= e(base_path('calendar.php')) ?>">📅 Kalender</a>
+        <a class="btn btn-outline btn-sm" href="<?= e(base_path('history.php')) ?>">📌 Riwayat</a>
+    </div>
+</div>
+
 <section class="grid grid-4">
     <div class="card stat <?= $statusCardClass ?>">
         <div>
@@ -191,7 +203,7 @@ $statusCardClass = match($booking['status']) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group"><label>Uang Muka (UMK)</label><input class="input" type="number" min="0" step="any" name="advance_amount" value="<?= e($booking['advance_amount']) ?>"></div>
+                    <div class="form-group"><label>Uang Muka (UMK)</label><input class="input" type="number" min="0" step="1" name="advance_amount" value="<?= (int)$booking['advance_amount'] ?>"></div>
                     <div class="form-group"><label>Uang Jalan / Uang Saku Driver</label><input class="input" type="number" min="0" step="any" name="allowance" value="<?= e($allowanceUsed) ?>"></div>
                     <div class="form-group"><label>KM Berangkat</label><input class="input" type="number" min="0" max="999999999999999" step="1" name="km_start" value="<?= e($booking['km_start']) ?>"></div>
                     <div class="form-group"><label>KM Kembali</label><input class="input" type="number" min="0" max="999999999999999" step="1" name="km_end" value="<?= e($booking['km_end']) ?>"></div>

@@ -167,17 +167,33 @@ function budget_summary(?string $month = null): array
 
     try {
         $stmtBook = db()->prepare("SELECT
-            COALESCE(SUM(allowance),0) AS allowance_total,
-            COALESCE(SUM(fuel_cost + toll_cost + parking_cost + other_cost),0) AS expense_total
+            COALESCE(SUM(allowance),0) AS allowance_total
             FROM bookings $whereBook");
         $stmtBook->execute($paramsBook);
         $row = $stmtBook->fetch() ?: [];
     } catch (Throwable $e) {
-        $row = ['allowance_total' => 0, 'expense_total' => 0];
+        $row = ['allowance_total' => 0];
+    }
+
+    // expense_total baca dari tabel expenses (sumber kebenaran tunggal / single source of truth)
+    try {
+        $whereExp = "WHERE b.status <> 'rejected'";
+        $paramsExp = [];
+        if (!empty($month)) {
+            $whereExp .= " AND DATE_FORMAT(b.date, '%Y-%m') = ?";
+            $paramsExp[] = $month;
+        }
+        $stmtExp = db()->prepare("SELECT COALESCE(SUM(e.amount),0)
+            FROM expenses e
+            JOIN bookings b ON b.id = e.booking_id
+            $whereExp");
+        $stmtExp->execute($paramsExp);
+        $expense = (float)$stmtExp->fetchColumn();
+    } catch (Throwable $e) {
+        $expense = 0;
     }
 
     $allowance = (float)($row['allowance_total'] ?? 0);
-    $expense   = (float)($row['expense_total'] ?? 0);
 
     return [
         'dropping'  => $dropping,

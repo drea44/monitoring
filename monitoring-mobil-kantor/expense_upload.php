@@ -19,7 +19,7 @@ if (!$booking) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category = $_POST['category'] ?? 'Lainnya';
-    $amount = (float)($_POST['amount'] ?? 0);
+    $amount = (float)preg_replace('/\D/', '', (string)($_POST['amount'] ?? 0));
     $expenseDate = $_POST['expense_date'] ?? date('Y-m-d');
     $note = trim($_POST['note'] ?? '');
     $fileName = null;
@@ -51,15 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = db()->prepare('INSERT INTO expenses (booking_id, category, amount, receipt_file, expense_date, note) VALUES (?, ?, ?, ?, ?, ?)');
     $stmt->execute([$bookingId, $category, $amount, $fileName, $expenseDate, $note]);
 
-    $field = match($category) {
-        'BBM' => 'fuel_cost',
-        'Tol' => 'toll_cost',
-        'Parkir' => 'parking_cost',
-        default => 'other_cost'
-    };
-    $update = db()->prepare("UPDATE bookings SET $field = $field + ? WHERE id = ?");
-    $update->execute([$amount, $bookingId]);
-
     flash('success', 'Nota berhasil diupload sebagai pengeluaran perjalanan.');
     redirect('booking_detail.php?id=' . $bookingId);
 }
@@ -75,6 +66,14 @@ include __DIR__ . '/templates/sidebar.php';
 ?>
 <main class="main">
 <?php include __DIR__ . '/templates/topbar.php'; ?>
+<div class="calendar-toolbar" style="margin-bottom:16px;background:#fff;padding:14px 20px;border-radius:12px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px">
+        <button type="button" class="btn-back-icon" onclick="if(window.history.length > 1 && document.referrer){ history.back(); } else { location.href='<?= e(base_path('booking_detail.php?id=' . $bookingId)) ?>'; }" title="Kembali">‹</button>
+        <span style="color:var(--border)">|</span>
+        <span style="font-weight:700;color:var(--text);font-size:14px">Upload Nota Perjalanan <?= e($booking['code']) ?></span>
+    </div>
+    <a class="btn btn-outline btn-sm" href="<?= e(base_path('booking_detail.php?id=' . $bookingId)) ?>">Detail Booking</a>
+</div>
 
 <section class="grid grid-2">
     <form method="post" enctype="multipart/form-data" class="card">

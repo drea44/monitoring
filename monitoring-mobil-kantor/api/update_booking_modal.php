@@ -35,14 +35,14 @@ try {
     $startTime  = $existingRow['start_time'];
     $endTime    = $existingRow['end_time'];
 
-    // Driver ID
+
     if (array_key_exists('driver_id', $input)) {
         $driverId = !empty($input['driver_id']) ? (int)$input['driver_id'] : null;
     } else {
         $driverId = $existingRow['driver_id'];
     }
 
-    // Check driver overlap if changing/assigning driver
+    
     if ($driverId && (int)$driverId !== (int)$existingRow['driver_id']) {
         $stmtDriver = db()->prepare("SELECT 1 FROM bookings
             WHERE driver_id = ?
@@ -67,13 +67,13 @@ try {
 
     // Allowance & Advance Amount
     if (array_key_exists('allowance', $input)) {
-        $allowance = (float)$input['allowance'];
+        $allowance = (float)preg_replace('/\D/', '', (string)$input['allowance']);
     } else {
         $allowance = (float)$existingRow['allowance'];
     }
 
     if (array_key_exists('advance_amount', $input)) {
-        $advanceAmt = (float)$input['advance_amount'];
+        $advanceAmt = (float)preg_replace('/\D/', '', (string)$input['advance_amount']);
     } else {
         $advanceAmt = (float)$existingRow['advance_amount'];
     }
@@ -93,7 +93,8 @@ try {
     // Realisasi Nota
     $updateRealisasi = array_key_exists('realisasi', $input) || array_key_exists('nota_total', $input);
     if ($updateRealisasi) {
-        $realisasiAmount = (float)($input['realisasi'] ?? $input['nota_total'] ?? 0);
+        $realisasiRaw = $input['realisasi'] ?? $input['nota_total'] ?? 0;
+        $realisasiAmount = (float)preg_replace('/\D/', '', (string)$realisasiRaw);
         $stmtExp = db()->prepare('SELECT * FROM expenses WHERE booking_id = ? ORDER BY id');
         $stmtExp->execute([$id]);
         $expenses = $stmtExp->fetchAll();

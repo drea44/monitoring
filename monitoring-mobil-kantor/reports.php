@@ -42,15 +42,21 @@ function build_report_transactions(string $from, string $to, string $carId, stri
         }
     }
     if ($type === '' || $type === 'uang_jalan') {
-        $where = ['b.date BETWEEN ? AND ?', 'b.status <> ?', 'b.allowance > 0'];
-        $params = [$from, $to, 'rejected'];
+        $where = ['b.date BETWEEN ? AND ?', "b.status <> 'rejected'"];
+        $params = [$from, $to];
         if ($carId !== '')    { $where[] = 'b.car_id = ?';    $params[] = $carId; }
         if ($driverId !== '') { $where[] = 'b.driver_id = ?'; $params[] = $driverId; }
         if ($status !== '')   { $where[] = 'b.status = ?';    $params[] = $status; }
         if ($keyword !== '')  { $where[] = '(b.code LIKE ? OR b.destination LIKE ? OR c.name LIKE ? OR d.name LIKE ?)'; for ($i=0;$i<4;$i++) $params[]='%'.$keyword.'%'; }
-        $stmt = db()->prepare("SELECT b.*, c.name car_name, c.plate_number, d.name driver_name FROM bookings b LEFT JOIN cars c ON c.id=b.car_id LEFT JOIN drivers d ON d.id=b.driver_id WHERE ".implode(' AND ',$where)." ORDER BY b.date ASC, b.id ASC");
+        $stmt = db()->prepare("SELECT b.*, c.name car_name, c.plate_number, d.name driver_name,
+            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.booking_id = b.id), 0) AS nota_total
+            FROM bookings b LEFT JOIN cars c ON c.id=b.car_id LEFT JOIN drivers d ON d.id=b.driver_id
+            WHERE ".implode(' AND ',$where)." ORDER BY b.date ASC, b.id ASC");
         $stmt->execute($params);
         foreach ($stmt->fetchAll() as $row) {
+            $umk        = (float)($row['advance_amount'] ?? 0);
+            $realisasi  = (float)($row['nota_total'] ?? 0);
+            $lebihKurang = $umk - $realisasi;
             $transactions[] = [
                 'date'         => $row['date'],
                 'sort_order'   => 2,
@@ -58,11 +64,14 @@ function build_report_transactions(string $from, string $to, string $carId, stri
                 'remark'       => 'Uang jalan '.$row['destination'].' - '.($row['driver_name'] ?: 'Driver belum ditentukan').' ('.($row['car_name'] ?: 'Mobil belum ditentukan').')',
                 'reference_no' => $row['code'],
                 'debit'        => 0,
-                'credit'       => (float)$row['allowance'],
+                'credit'       => (float)($row['allowance'] ?? 0),
                 'car_name'     => $row['car_name']     ?: '-',
                 'plate_number' => $row['plate_number'] ?: '-',
                 'driver_name'  => $row['driver_name']  ?: '-',
                 'booking_id'   => (int)$row['id'],
+                'umk'          => $umk,
+                'realisasi'    => $realisasi,
+                'lebih_kurang' => $lebihKurang,
             ];
         }
     }
@@ -100,19 +109,13 @@ function opening_balance_before(string $from, string $carId = '', string $driver
     return $debit - $credit;
 }
 
-$openingBalance = opening_balance_before($from, (string)$carId, (string)$driverId, (string)$status, (string)$type);
 $transactions   = build_report_transactions($from, $to, (string)$carId, (string)$driverId, (string)$status, (string)$type, $keyword);
-$runningBalance = $openingBalance;
-$totalDebit = $totalCredit = $debitCount = $creditCount = 0;
-foreach ($transactions as $idx => $trx) {
-    $totalDebit  += $trx['debit'];
-    $totalCredit += $trx['credit'];
-    if ($trx['debit']  > 0) $debitCount++;
-    if ($trx['credit'] > 0) $creditCount++;
-    $runningBalance = $runningBalance + $trx['debit'] - $trx['credit'];
-    $transactions[$idx]['balance'] = $runningBalance;
+$totalUmk = $totalRealisasi = 0;
+foreach ($transactions as $trx) {
+    $totalUmk       += (float)($trx['umk'] ?? 0);
+    $totalRealisasi += (float)($trx['realisasi'] ?? 0);
 }
-$closingBalance = $runningBalance;
+$totalLebihKurang = $totalUmk - $totalRealisasi;
 
 if ($export === 'excel') {
     $filename = 'report_keuangan_' . $from . '_sd_' . $to . '.xls';
@@ -134,11 +137,13 @@ if ($export === 'excel') {
 
  col.c-tanggal      { mso-column-width: 82pt; }
  col.c-jenis        { mso-column-width: 120pt; }
- col.c-refno        { mso-column-width: 100pt; }
+ col.c-refno        { mso-column-width: 110pt; }
  col.c-mobil        { mso-column-width: 110pt; }
- col.c-plat         { mso-column-width: 90pt; }
+ col.c-plat         { mso-column-width: 80pt; }
  col.c-driver       { mso-column-width: 110pt; }
- col.c-saldo        { mso-column-width: 130pt; }
+ col.c-umk          { mso-column-width: 120pt; }
+ col.c-realisasi    { mso-column-width: 120pt; }
+ col.c-lk           { mso-column-width: 120pt; }
 
  .title-cell {
   font-size: 14pt; font-weight: bold; color: #0F2F52;
@@ -200,8 +205,16 @@ if ($export === 'excel') {
   <td class="meta-val-text" colspan="2"><?= e(tanggal_id($from)) ?> s/d <?= e(tanggal_id($to)) ?></td>
  </tr>
  <tr>
-  <td class="meta-label">Saldo Akhir Periode</td>
-  <td class="<?= $closingBalance >= 0 ? 'meta-val-balance-pos' : 'meta-val-balance-neg' ?>" colspan="2"><?= (float)$closingBalance ?></td>
+  <td class="meta-label">Total UMK Periode</td>
+  <td class="meta-val-num" colspan="2"><?= (float)$totalUmk ?></td>
+ </tr>
+ <tr>
+  <td class="meta-label">Total Realisasi</td>
+  <td class="meta-val-num" colspan="2"><?= (float)$totalRealisasi ?></td>
+ </tr>
+ <tr>
+  <td class="meta-label">Total Lebih / Kurang</td>
+  <td class="<?= $totalLebihKurang >= 0 ? 'meta-val-balance-pos' : 'meta-val-balance-neg' ?>" colspan="2"><?= (float)$totalLebihKurang ?></td>
  </tr>
 </table>
 
@@ -213,7 +226,9 @@ if ($export === 'excel') {
   <col class="c-mobil">
   <col class="c-plat">
   <col class="c-driver">
-  <col class="c-saldo">
+  <col class="c-umk">
+  <col class="c-realisasi">
+  <col class="c-lk">
  </colgroup>
  <thead>
   <tr>
@@ -223,42 +238,43 @@ if ($export === 'excel') {
    <th class="th">Mobil</th>
    <th class="th">Plat Nomor</th>
    <th class="th">Driver</th>
-   <th class="th">Saldo Berjalan</th>
+   <th class="th">UMK (Uang Muka)</th>
+   <th class="th">Realisasi</th>
+   <th class="th">Lebih / Kurang</th>
   </tr>
  </thead>
  <tbody>
- <?php if ($openingBalance != 0): ?>
- <tr class="row-opening">
-  <td class="td-center"><?= e(tanggal_id($from)) ?></td>
-  <td class="td-center">Saldo Awal</td>
-  <td class="td-center">-</td>
-  <td class="td-left">-</td>
-  <td class="td-left">-</td>
-  <td class="td-left">-</td>
-  <td class="td-num" style="color:#2563EB"><?= (float)$openingBalance ?></td>
- </tr>
- <?php endif; ?>
  <?php foreach ($transactions as $i => $trx): ?>
  <tr class="<?= $i % 2 === 0 ? 'row-even' : 'row-odd' ?>">
   <td class="td-center"><?= e(tanggal_id($trx['date'])) ?></td>
   <td class="td-center"><?= e($trx['type']) ?></td>
-  <td class="td-center"><?= e($trx['reference_no']) ?></td>
+  <td class="td-left" style="color:#2563EB;font-weight:700"><?= e($trx['reference_no']) ?></td>
   <td class="td-left"><?= e($trx['car_name']) ?></td>
   <td class="td-left"><?= e($trx['plate_number'] ?? '-') ?></td>
   <td class="td-left"><?= e($trx['driver_name']) ?></td>
-  <td class="<?= $trx['balance'] >= 0 ? 'td-saldo-pos' : 'td-saldo-neg' ?>"><?= (float)$trx['balance'] ?></td>
+  <?php if ($trx['type'] === 'Uang Jalan Driver'): ?>
+  <td class="td-num" style="color:#2563EB"><?= (float)($trx['umk'] ?? 0) ?></td>
+  <td class="td-num"><?= (float)($trx['realisasi'] ?? 0) ?></td>
+  <td class="<?= (float)($trx['lebih_kurang'] ?? 0) >= 0 ? 'td-debit' : 'td-credit' ?>"><?= (float)($trx['lebih_kurang'] ?? 0) ?></td>
+  <?php else: ?>
+  <td class="td-center">—</td>
+  <td class="td-center">—</td>
+  <td class="td-center">—</td>
+  <?php endif; ?>
  </tr>
  <?php endforeach; ?>
  <?php if (!$transactions): ?>
  <tr>
-  <td colspan="7" style="text-align:center;padding:20px;color:#94A3B8;border:1px solid #D1D5DB">Tidak ada transaksi pada periode ini.</td>
+  <td colspan="9" style="text-align:center;padding:20px;color:#94A3B8;border:1px solid #D1D5DB">Tidak ada transaksi pada periode ini.</td>
  </tr>
  <?php endif; ?>
  </tbody>
  <tfoot>
   <tr>
    <td class="total-label" colspan="6">TOTAL PERIODE</td>
-   <td class="total-saldo"><?= (float)$closingBalance ?></td>
+   <td class="total-saldo" style="color:#2563EB"><?= (float)$totalUmk ?></td>
+   <td class="total-saldo"><?= (float)$totalRealisasi ?></td>
+   <td class="<?= $totalLebihKurang >= 0 ? 'total-debit' : 'total-credit' ?>"><?= (float)$totalLebihKurang ?></td>
   </tr>
  </tfoot>
 </table>
@@ -276,9 +292,23 @@ if ($export === 'csv') {
     header('Cache-Control: max-age=0');
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Tanggal','Jenis Transaksi','Keterangan','No. Referensi','Mobil','Driver','Debit (Masuk)','Kredit (Keluar)','Saldo Berjalan'], ';');
+    fputcsv($out, ['Tanggal','Jenis Transaksi','Keterangan','No. Referensi','Mobil','Plat Nomor','Driver','UMK (Uang Muka)','Realisasi','Lebih / Kurang'], ';');
     foreach ($transactions as $trx) {
-        fputcsv($out, [tanggal_id($trx['date']),$trx['type'],$trx['remark'],$trx['reference_no'],$trx['car_name'],$trx['driver_name'],$trx['debit'],$trx['credit'],$trx['balance']], ';');
+        $umk = number_format((float)($trx['umk'] ?? 0), 0, ',', '.');
+        $realisasi = number_format((float)($trx['realisasi'] ?? 0), 0, ',', '.');
+        $lk = number_format((float)($trx['lebih_kurang'] ?? 0), 0, ',', '.');
+        fputcsv($out, [
+            tanggal_id($trx['date']),
+            $trx['type'],
+            $trx['remark'],
+            $trx['reference_no'],
+            $trx['car_name'],
+            $trx['plate_number'] ?? '-',
+            $trx['driver_name'],
+            $trx['type'] === 'Uang Jalan Driver' ? $umk : '-',
+            $trx['type'] === 'Uang Jalan Driver' ? $realisasi : '-',
+            $trx['type'] === 'Uang Jalan Driver' ? $lk : '-',
+        ], ';');
     }
     fclose($out); exit;
 }
@@ -376,16 +406,12 @@ include __DIR__ . '/templates/sidebar.php';
                     <th>Mobil</th>
                     <th>Plat Nomor</th>
                     <th>Driver</th>
-                    <th style="text-align:right">Saldo</th>
+                    <th style="text-align:right">UMK (Uang Muka)</th>
+                    <th style="text-align:right">Realisasi</th>
+                    <th style="text-align:right">Lebih / Kurang</th>
                 </tr>
             </thead>
             <tbody>
-            <?php if ($openingBalance != 0): ?>
-                <tr style="background:var(--surface-2);font-style:italic">
-                    <td colspan="6" style="color:var(--muted);font-size:12px;padding-left:16px">Saldo Awal Periode</td>
-                    <td style="text-align:right;font-weight:800;color:var(--blue)"><?= e(rupiah($openingBalance)) ?></td>
-                </tr>
-            <?php endif; ?>
             <?php foreach ($displayTransactions as $trx): ?>
                 <tr>
                     <td style="white-space:nowrap"><strong><?= e(tanggal_id($trx['date'])) ?></strong></td>
@@ -397,27 +423,42 @@ include __DIR__ . '/templates/sidebar.php';
                     <td>
                         <?php if ($trx['booking_id']): ?>
                             <a href="<?= e(base_path('booking_detail.php?id='.$trx['booking_id'])) ?>"
-                               style="color:var(--blue);font-weight:700"><?= e($trx['reference_no']) ?></a>
+                               style="color:var(--blue);font-weight:700;text-decoration:none"><?= e($trx['reference_no']) ?></a>
                         <?php else: ?>
-                            <span class="plate-tag"><?= e($trx['reference_no']) ?></span>
+                            <span style="color:var(--blue);font-weight:700"><?= e($trx['reference_no']) ?></span>
                         <?php endif; ?>
                     </td>
                     <td style="font-size:12.5px"><?= e($trx['car_name']) ?></td>
                     <td style="font-size:12.5px">
                         <?php if (($trx['plate_number'] ?? '-') !== '-'): ?>
-                            <span class="plate-tag" style="font-size:11.5px"><?= e($trx['plate_number']) ?></span>
+                            <span style="font-size:12px;color:var(--text);font-weight:600"><?= e($trx['plate_number']) ?></span>
                         <?php else: ?>
                             <span style="color:var(--muted)">-</span>
                         <?php endif; ?>
                     </td>
                     <td style="font-size:12.5px"><?= e($trx['driver_name']) ?></td>
-                    <td style="text-align:right">
-                        <strong style="color:<?= $trx['balance'] >= 0 ? 'var(--text)' : 'var(--red)' ?>"><?= e(rupiah($trx['balance'])) ?></strong>
-                    </td>
+                    <?php if ($trx['type'] === 'Uang Jalan Driver'): ?>
+                        <td style="text-align:right">
+                            <strong style="color:var(--blue)"><?= e(rupiah($trx['umk'] ?? 0)) ?></strong>
+                        </td>
+                        <td style="text-align:right">
+                            <strong style="color:var(--text)"><?= e(rupiah($trx['realisasi'] ?? 0)) ?></strong>
+                        </td>
+                        <td style="text-align:right">
+                            <?php $lk = (float)($trx['lebih_kurang'] ?? 0); ?>
+                            <strong style="color:<?= $lk >= 0 ? 'var(--green)' : 'var(--red)' ?>">
+                                <?= e(rupiah($lk)) ?>
+                            </strong>
+                        </td>
+                    <?php else: ?>
+                        <td style="text-align:center;color:var(--muted);font-size:12px">—</td>
+                        <td style="text-align:center;color:var(--muted);font-size:12px">—</td>
+                        <td style="text-align:center;color:var(--muted);font-size:12px">—</td>
+                    <?php endif; ?>
                 </tr>
             <?php endforeach; ?>
             <?php if (!$displayTransactions): ?>
-                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">
+                <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">
                     📭 Tidak ada transaksi sesuai filter.
                 </td></tr>
             <?php endif; ?>
@@ -426,7 +467,9 @@ include __DIR__ . '/templates/sidebar.php';
             <tfoot>
                 <tr style="background:var(--surface-2);font-weight:900">
                     <td colspan="6" style="padding:12px 16px;color:var(--muted);font-size:12px">TOTAL PERIODE</td>
-                    <td style="text-align:right;color:<?= $closingBalance >= 0 ? 'var(--blue)' : 'var(--red)' ?>"><?= e(rupiah($closingBalance)) ?></td>
+                    <td style="text-align:right;color:var(--blue)"><?= e(rupiah($totalUmk)) ?></td>
+                    <td style="text-align:right;color:var(--text)"><?= e(rupiah($totalRealisasi)) ?></td>
+                    <td style="text-align:right;color:<?= $totalLebihKurang >= 0 ? 'var(--green)' : 'var(--red)' ?>"><?= e(rupiah($totalLebihKurang)) ?></td>
                 </tr>
             </tfoot>
             <?php endif; ?>

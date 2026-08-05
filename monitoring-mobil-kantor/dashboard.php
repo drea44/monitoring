@@ -28,14 +28,21 @@ if (is_admin()) {
         $label = date('M', $ts);
         $stmt = db()->prepare("SELECT
             COUNT(*) total,
+            SUM(status='running') running,
             SUM(status='completed') completed,
             SUM(status='rejected') rejected
             FROM bookings WHERE DATE_FORMAT(date, '%Y-%m') = ?");
         $stmt->execute([$ym]);
-        $row = $stmt->fetch() ?: ['total'=>0,'completed'=>0,'rejected'=>0];
-        $months[] = ['label'=>$label, 'total'=>(int)$row['total'], 'completed'=>(int)$row['completed'], 'rejected'=>(int)$row['rejected']];
+        $row = $stmt->fetch() ?: ['total'=>0,'running'=>0,'completed'=>0,'rejected'=>0];
+        $months[] = [
+            'label'     => $label,
+            'total'     => (int)$row['total'],
+            'running'   => (int)$row['running'],
+            'completed' => (int)$row['completed'],
+            'rejected'  => (int)$row['rejected']
+        ];
     }
-    $maxChart = max(1, max(array_map(fn($m) => max($m['total'], $m['completed'], $m['rejected']), $months)));
+    $maxChart = max(1, max(array_map(fn($m) => max($m['total'], $m['running'], $m['completed'], $m['rejected']), $months)));
 
     $recent = db()->query("SELECT b.*, u.name requester, c.name car_name, c.plate_number, d.name driver_name FROM bookings b JOIN users u ON u.id=b.user_id LEFT JOIN cars c ON c.id=b.car_id LEFT JOIN drivers d ON d.id=b.driver_id ORDER BY b.created_at DESC LIMIT 8")->fetchAll();
 } else {
@@ -78,6 +85,7 @@ include __DIR__ . '/templates/sidebar.php';
         <?php
         $chartLabels    = array_column($months, 'label');
         $chartTotal     = array_column($months, 'total');
+        $chartRunning   = array_column($months, 'running');
         $chartCompleted = array_column($months, 'completed');
         $chartRejected  = array_column($months, 'rejected');
         ?>
@@ -88,7 +96,7 @@ include __DIR__ . '/templates/sidebar.php';
                     <p class="text-muted">Grafik interaktif 6 bulan terakhir</p>
                 </div>
             </div>
-            <div style="position:relative;height:240px;width:100%">
+            <div style="position:relative;height:250px;width:100%">
                 <canvas id="bookingChart"></canvas>
             </div>
         </div>
@@ -104,27 +112,35 @@ include __DIR__ . '/templates/sidebar.php';
                     labels: <?= json_encode($chartLabels) ?>,
                     datasets: [
                         {
-                            label: 'Booking',
+                            label: 'Total Booking',
                             data: <?= json_encode($chartTotal) ?>,
                             backgroundColor: '#2563ff',
-                            borderRadius: 6,
-                            barPercentage: 0.75,
+                            borderRadius: 5,
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.6
+                        },
+                        {
+                            label: 'Berjalan',
+                            data: <?= json_encode($chartRunning) ?>,
+                            backgroundColor: '#8b5cf6',
+                            borderRadius: 5,
+                            barPercentage: 0.7,
                             categoryPercentage: 0.6
                         },
                         {
                             label: 'Selesai',
                             data: <?= json_encode($chartCompleted) ?>,
                             backgroundColor: '#10b981',
-                            borderRadius: 6,
-                            barPercentage: 0.75,
+                            borderRadius: 5,
+                            barPercentage: 0.7,
                             categoryPercentage: 0.6
                         },
                         {
                             label: 'Dibatalkan',
                             data: <?= json_encode($chartRejected) ?>,
                             backgroundColor: '#ef4444',
-                            borderRadius: 6,
-                            barPercentage: 0.75,
+                            borderRadius: 5,
+                            barPercentage: 0.7,
                             categoryPercentage: 0.6
                         }
                     ]

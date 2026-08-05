@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $entryDate  = $_POST['entry_date'] ?? date('Y-m-d');
-    $amount     = (float)($_POST['amount'] ?? 0);
+    $amount     = (float)preg_replace('/\D/', '', (string)($_POST['amount'] ?? 0));
     $referenceNo = trim($_POST['reference_no'] ?? '');
     $description = trim($_POST['description'] ?? '');
 
@@ -101,9 +101,12 @@ include __DIR__ . '/templates/sidebar.php';
 <section class="grid grid-2" style="margin-bottom:22px">
 
     <div class="card">
-        <div style="margin-bottom:20px">
-            <h2 style="margin-bottom:4px">Tambah Dropping Anggaran</h2>
-            <p class="text-muted" style="font-size:13px">Setiap dropping yang diinput akan masuk sebagai dana masuk pada Report Keuangan.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div>
+                <h2 style="margin-bottom:4px">Tambah Dropping Anggaran</h2>
+                <p class="text-muted" style="font-size:13px">Setiap dropping yang diinput akan masuk sebagai dana masuk pada Report Keuangan.</p>
+            </div>
+            <button type="button" class="btn-back-icon" onclick="history.back()" title="Kembali">‹</button>
         </div>
         <form method="post" class="form-grid">
             <input type="hidden" name="action" value="add">

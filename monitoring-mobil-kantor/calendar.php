@@ -60,7 +60,7 @@ include __DIR__ . '/templates/sidebar.php';
 <section class="card">
     <div class="calendar-toolbar">
         <a class="btn btn-outline" href="?month=<?= e($prev) ?>">← Bulan Sebelumnya</a>
-        <h2><?= e($firstDay->format('F Y')) ?></h2>
+        <h2><?= e(bulan_tahun_id($month)) ?></h2>
         <a class="btn btn-outline" href="?month=<?= e($next) ?>">Bulan Berikutnya →</a>
     </div>
     <div class="calendar">
@@ -132,13 +132,10 @@ include __DIR__ . '/templates/sidebar.php';
                     if (empty($dayBookings)) continue;
                     $hasRows = true;
                     foreach ($dayBookings as $idx => $b):
-                    $umk       = (float)($b['advance_amount'] ?? 0);
-                    // Realisasi = total nota riil yang diupload (bukan allowance/uang jalan)
-                    $notaTotal = (float)($b['nota_total'] ?? 0);
-                    // Uang jalan driver (terpisah dari UMK)
-                    $uangJalan = (float)($b['allowance'] ?? 0);
-                    // Lebih/Kurang = UMK - Realisasi nota
-                    $selisih   = $umk - $notaTotal;
+                        $umk       = (float)($b['advance_amount'] ?? 0);
+                        $notaTotal = (float)($b['nota_total'] ?? 0);
+                        $uangJalan = (float)($b['allowance'] ?? 0);
+                        $selisih   = $umk - $notaTotal;
                 ?>
                     <tr>
                         <?php if ($idx === 0): ?>

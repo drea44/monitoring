@@ -48,9 +48,17 @@ $page_title    = 'Data Driver';
 $page_subtitle = 'Kelola driver, nomor HP, status ketersediaan, dan statistik perjalanan bulan ini.';
 
 $drivers = db()->query("SELECT d.*,
-    COUNT(b.id) trips,
-    COALESCE(SUM(b.allowance),0) total_allowance,
-    COALESCE(SUM(b.fuel_cost + b.toll_cost + b.parking_cost + b.other_cost),0) total_expense
+    COUNT(DISTINCT b.id) trips,
+    COALESCE(SUM(DISTINCT b.allowance),0) total_allowance,
+    COALESCE((
+        SELECT SUM(e.amount) 
+        FROM expenses e 
+        JOIN bookings b2 ON b2.id = e.booking_id 
+        WHERE b2.driver_id = d.id 
+          AND b2.status <> 'rejected'
+          AND b2.date <= LAST_DAY(CURDATE())
+          AND COALESCE(b2.return_date, b2.date) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+    ), 0) total_expense
     FROM drivers d
     LEFT JOIN bookings b ON b.driver_id=d.id
         AND b.status <> 'rejected'
