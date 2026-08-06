@@ -175,7 +175,6 @@ function budget_summary(?string $month = null): array
         $row = ['allowance_total' => 0];
     }
 
-    // expense_total baca dari tabel expenses (sumber kebenaran tunggal / single source of truth)
     try {
         $whereExp = "WHERE b.status <> 'rejected'";
         $paramsExp = [];

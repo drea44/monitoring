@@ -24,7 +24,7 @@ function require_login(): void
     if (!current_user()) {
         redirect('login.php');
     }
-    
+
 }
 
 function require_admin(): void

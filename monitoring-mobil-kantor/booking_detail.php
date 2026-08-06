@@ -4,7 +4,7 @@ require_login();
 
 $id = (int)($_GET['id'] ?? 0);
 $params = [$id];
-$sql = "SELECT b.*, u.name requester, u.department, c.name car_name, c.plate_number, c.capacity, d.name driver_name, d.phone driver_phone
+$sql = "SELECT b.*, u.name requester, COALESCE(NULLIF(b.department, ''), u.department) AS department, c.name car_name, c.plate_number, c.capacity, d.name driver_name, d.phone driver_phone
         FROM bookings b
         JOIN users u ON u.id=b.user_id
         LEFT JOIN cars c ON c.id=b.car_id
@@ -113,7 +113,7 @@ $statusCardClass = match($booking['status']) {
             <div class="detail-item"><span>Tanggal Pulang</span><strong><?= e(tanggal_id($booking['return_date'])) ?></strong></div>
             <div class="detail-item"><span>Jam</span><strong><?= e(periode_jam($booking['start_time'], $booking['end_time'])) ?></strong></div>
             <div class="detail-item"><span>Pemesan</span><strong><?= e($booking['requester']) ?></strong></div>
-            <div class="detail-item"><span>Departemen</span><strong><?= e($booking['department'] ?? '-') ?></strong></div>
+            <div class="detail-item"><span>Bidang (Departemen)</span><strong style="color:var(--blue,#2563ff)"><?= e($booking['department'] ?? '-') ?></strong></div>
             <div class="detail-item"><span>Tujuan</span><strong><?= e($booking['destination']) ?></strong></div>
             <div class="detail-item"><span>Jumlah Penumpang</span><strong><?= e($booking['passenger_count']) ?></strong></div>
             <div class="detail-item full"><span>Keperluan</span><strong><?= e($booking['purpose'] ?? '-') ?></strong></div>

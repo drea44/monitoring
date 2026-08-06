@@ -48,9 +48,9 @@ function build_report_transactions(string $from, string $to, string $carId, stri
         if ($driverId !== '') { $where[] = 'b.driver_id = ?'; $params[] = $driverId; }
         if ($status !== '')   { $where[] = 'b.status = ?';    $params[] = $status; }
         if ($keyword !== '')  { $where[] = '(b.code LIKE ? OR b.destination LIKE ? OR c.name LIKE ? OR d.name LIKE ?)'; for ($i=0;$i<4;$i++) $params[]='%'.$keyword.'%'; }
-        $stmt = db()->prepare("SELECT b.*, c.name car_name, c.plate_number, d.name driver_name,
+        $stmt = db()->prepare("SELECT b.*, u.name requester, COALESCE(NULLIF(b.department, ''), u.department) AS department, c.name car_name, c.plate_number, d.name driver_name,
             COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.booking_id = b.id), 0) AS nota_total
-            FROM bookings b LEFT JOIN cars c ON c.id=b.car_id LEFT JOIN drivers d ON d.id=b.driver_id
+            FROM bookings b JOIN users u ON u.id=b.user_id LEFT JOIN cars c ON c.id=b.car_id LEFT JOIN drivers d ON d.id=b.driver_id
             WHERE ".implode(' AND ',$where)." ORDER BY b.date ASC, b.id ASC");
         $stmt->execute($params);
         foreach ($stmt->fetchAll() as $row) {

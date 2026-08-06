@@ -10,7 +10,7 @@ if (!valid_date_value($date)) {
 }
 
 $params = [$date, $date];
-$sql = "SELECT b.*, u.name requester, u.department, c.name car_name, c.plate_number, d.name driver_name,
+$sql = "SELECT b.*, u.name requester, COALESCE(NULLIF(b.department, ''), u.department) AS department, c.name car_name, c.plate_number, d.name driver_name,
                COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.booking_id = b.id), 0) AS nota_total
         FROM bookings b
         JOIN users u ON u.id = b.user_id

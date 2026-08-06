@@ -135,7 +135,16 @@ $activeCount = count(array_filter($users, fn($u) => $u['status'] === 'active'));
                     <option value="admin">🛡️ Administrator</option>
                 </select>
             </div>
-            <div class="form-group"><label>Departemen</label><input class="input" name="department" placeholder="Contoh: Keuangan"></div>
+            <div class="form-group"><label>Bidang (Departemen)</label>
+                <select name="department">
+                    <option value="">-- Pilih Bidang --</option>
+                    <option value="Dukungan Bisnis">Dukungan Bisnis</option>
+                    <option value="Penjualan dan Dukungan Operasi">Penjualan dan Dukungan Operasi</option>
+                    <option value="Bidang Inspeksi Umum">Bidang Inspeksi Umum</option>
+                    <option value="Bidang Inspeksi Teknik">Bidang Inspeksi Teknik</option>
+                    <option value="Bidang Inspeksi dan Pengujian">Bidang Inspeksi dan Pengujian</option>
+                </select>
+            </div>
             <div class="form-group"><label>No HP</label><input class="input" name="phone" placeholder="0812-xxxx-xxxx"></div>
             <div class="form-group"><label>Status</label>
                 <select name="status">
@@ -168,7 +177,16 @@ $activeCount = count(array_filter($users, fn($u) => $u['status'] === 'active'));
                     <option value="admin">🛡️ Administrator</option>
                 </select>
             </div>
-            <div class="form-group"><label>Departemen</label><input class="input" name="department" id="editUserDept"></div>
+            <div class="form-group"><label>Bidang (Departemen)</label>
+                <select name="department" id="editUserDept">
+                    <option value="">-- Pilih Bidang --</option>
+                    <option value="Dukungan Bisnis">Dukungan Bisnis</option>
+                    <option value="Penjualan dan Dukungan Operasi">Penjualan dan Dukungan Operasi</option>
+                    <option value="Bidang Inspeksi Umum">Bidang Inspeksi Umum</option>
+                    <option value="Bidang Inspeksi Teknik">Bidang Inspeksi Teknik</option>
+                    <option value="Bidang Inspeksi dan Pengujian">Bidang Inspeksi dan Pengujian</option>
+                </select>
+            </div>
             <div class="form-group"><label>No HP</label><input class="input" name="phone" id="editUserPhone"></div>
             <div class="form-group"><label>Status</label>
                 <select name="status" id="editUserStatus">

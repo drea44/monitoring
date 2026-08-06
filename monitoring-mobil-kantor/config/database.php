@@ -1,8 +1,4 @@
 <?php
-/**
- * Konfigurasi database untuk XAMPP.
- * Default XAMPP: host localhost, user root, password kosong.
- */
 const DB_HOST = 'localhost';
 const DB_NAME = 'monitoring_mobil_kantor';
 const DB_USER = 'root';
@@ -25,21 +21,13 @@ function db(): PDO
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
             ensure_app_schema($pdo);
         } catch (PDOException $e) {
-            die('Koneksi database gagal. Pastikan database sudah di-import di XAMPP/phpMyAdmin. Detail: ' . $e->getMessage());
+            die('Koneksi database gagal. Detail: ' . $e->getMessage());
         }
     }
 
     return $pdo;
 }
 
-/**
- * Patch ringan agar project lama tetap jalan setelah update:
- * - menambah return_date untuk tanggal pulang
- * - mengubah kolom KM ke BIGINT supaya input KM besar tidak menyebabkan HTTP 500
- * - menambah advance_amount lama agar database versi sebelumnya tetap kompatibel
- * - menambah app_settings untuk Dropping Anggaran
- * - menyesuaikan kategori nota agar tidak memakai kategori Makan
- */
 function ensure_app_schema(PDO $pdo): void
 {
     static $done = false;
@@ -61,6 +49,12 @@ function ensure_app_schema(PDO $pdo): void
             $pdo->exec("ALTER TABLE bookings ADD COLUMN advance_amount DECIMAL(14,2) NOT NULL DEFAULT 0 AFTER allowance");
         }
 
+        $deptColumn = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'department'")->fetch();
+        if (!$deptColumn) {
+            $pdo->exec("ALTER TABLE bookings ADD COLUMN department VARCHAR(100) NULL AFTER user_id");
+            $pdo->exec("UPDATE bookings b JOIN users u ON u.id = b.user_id SET b.department = u.department WHERE b.department IS NULL OR b.department = ''");
+        }
+
         $pdo->exec("ALTER TABLE bookings MODIFY COLUMN km_start BIGINT NULL");
         $pdo->exec("ALTER TABLE bookings MODIFY COLUMN km_end BIGINT NULL");
         $pdo->exec("ALTER TABLE cars MODIFY COLUMN last_km BIGINT NOT NULL DEFAULT 0");
@@ -79,10 +73,8 @@ function ensure_app_schema(PDO $pdo): void
             $pdo->exec("UPDATE expenses SET category='Lainnya' WHERE category='Makan'");
             $pdo->exec("ALTER TABLE expenses MODIFY COLUMN category ENUM('BBM','Tol','Parkir','Lainnya') NOT NULL DEFAULT 'Lainnya'");
         } catch (Throwable $e) {
-            // Abaikan jika tabel/kolom belum tersedia atau hak ALTER tidak ada.
         }
     } catch (Throwable $e) {
-        // Jika user MySQL tidak punya hak ALTER, aplikasi tetap berjalan memakai struktur yang ada.
-        // Jalankan file patch di folder database lewat phpMyAdmin untuk patch manual.
     }
 }
+

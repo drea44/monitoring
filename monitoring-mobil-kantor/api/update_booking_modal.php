@@ -42,7 +42,7 @@ try {
         $driverId = $existingRow['driver_id'];
     }
 
-    
+
     if ($driverId && (int)$driverId !== (int)$existingRow['driver_id']) {
         $stmtDriver = db()->prepare("SELECT 1 FROM bookings
             WHERE driver_id = ?
@@ -65,15 +65,15 @@ try {
         $destination = $existingRow['destination'];
     }
 
-    // Allowance & Advance Amount
+    
     if (array_key_exists('allowance', $input)) {
-        $allowance = (float)preg_replace('/\D/', '', (string)$input['allowance']);
+        $allowance = (float)$input['allowance'];
     } else {
         $allowance = (float)$existingRow['allowance'];
     }
 
     if (array_key_exists('advance_amount', $input)) {
-        $advanceAmt = (float)preg_replace('/\D/', '', (string)$input['advance_amount']);
+        $advanceAmt = (float)$input['advance_amount'];
     } else {
         $advanceAmt = (float)$existingRow['advance_amount'];
     }
@@ -93,8 +93,7 @@ try {
     // Realisasi Nota
     $updateRealisasi = array_key_exists('realisasi', $input) || array_key_exists('nota_total', $input);
     if ($updateRealisasi) {
-        $realisasiRaw = $input['realisasi'] ?? $input['nota_total'] ?? 0;
-        $realisasiAmount = (float)preg_replace('/\D/', '', (string)$realisasiRaw);
+        $realisasiAmount = (float)($input['realisasi'] ?? $input['nota_total'] ?? 0);
         $stmtExp = db()->prepare('SELECT * FROM expenses WHERE booking_id = ? ORDER BY id');
         $stmtExp->execute([$id]);
         $expenses = $stmtExp->fetchAll();

@@ -164,6 +164,10 @@ $hasNotif = count($displayNotifs) > 0;
         <p><?= e($page_subtitle ?? 'Sistem monitoring penggunaan mobil kantor') ?></p>
     </div>
     <div class="topbar-actions">
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Ubah Tampilan Mode" aria-label="Ubah Tampilan Mode">
+            <i class="ph-duotone ph-moon-stars icon-moon"></i>
+            <i class="ph-duotone ph-sun icon-sun"></i>
+        </button>
         <div class="topbar-dropdown-wrap" id="notifWrap">
             <button class="notif-btn" id="notifBtn" title="Notifikasi" aria-label="Notifikasi"
                     onclick="toggleTopbarDropdown('notifDropdown')">
@@ -333,6 +337,27 @@ function dismissAllNotifs(e) {
         body: JSON.stringify({ all_keys: allKeys })
     }).catch(err => console.error('Dismiss all error:', err));
 }
+
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const nextTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('theme', nextTheme);
+    updateThemeToggleUI();
+}
+
+function updateThemeToggleUI() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+        btn.setAttribute('title', isDark ? 'Ubah ke Mode Terang' : 'Ubah ke Mode Gelap');
+        btn.setAttribute('aria-label', isDark ? 'Ubah ke Mode Terang' : 'Ubah ke Mode Gelap');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateThemeToggleUI();
+});
 
 function toggleTopbarDropdown(id) {
     const all = document.querySelectorAll('.topbar-dropdown');
