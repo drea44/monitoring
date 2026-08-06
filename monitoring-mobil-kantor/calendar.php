@@ -34,8 +34,21 @@ $rawBookings = $stmt->fetchAll();
 $bookings = [];
 $allMonthBookings = [];
 
+// Preload all expenses for the retrieved bookings
+$bookingIds = array_column($rawBookings, 'id');
+$allExpensesByBooking = [];
+if (!empty($bookingIds)) {
+    $inClause = implode(',', array_fill(0, count($bookingIds), '?'));
+    $expStmt = db()->prepare("SELECT * FROM expenses WHERE booking_id IN ($inClause) ORDER BY expense_date DESC, id DESC");
+    $expStmt->execute($bookingIds);
+    foreach ($expStmt->fetchAll() as $exp) {
+        $allExpensesByBooking[$exp['booking_id']][] = $exp;
+    }
+}
+
 foreach ($rawBookings as $b) {
     $b['return_date'] = $b['return_date'] ?: $b['date'];
+    $b['expenses'] = $allExpensesByBooking[$b['id']] ?? [];
     $allMonthBookings[] = $b;
     $bookingStart = new DateTime(max($b['date'], $start->format('Y-m-d')));
     $bookingEnd = new DateTime(min($b['return_date'], $end->format('Y-m-d')));
@@ -179,6 +192,69 @@ include __DIR__ . '/templates/sidebar.php';
     </div>
 </section>
 
+<section class="card" style="margin-top:24px">
+    <div class="calendar-toolbar">
+        <div>
+            <h2 style="font-size:18px;font-weight:700">📋 Daftar Realisasi Pengeluaran Perjalanan (<?= e($firstDay->format('F Y')) ?>)</h2>
+            <p class="text-muted" style="font-size:13px;margin-top:4px">Melihat seluruh bukti transaksi dan rincian realisasi pengeluaran untuk booking bulan ini (Read-Only).</p>
+        </div>
+    </div>
+    <div style="overflow-x:auto">
+        <table class="table" style="font-size:13px">
+            <thead>
+                <tr style="background:var(--bg-subtle)">
+                    <th style="padding:10px">KODE BOOKING</th>
+                    <th style="padding:10px">TANGGAL NOTA</th>
+                    <th style="padding:10px">KATEGORI</th>
+                    <th style="padding:10px">NOMINAL</th>
+                    <th style="padding:10px">FILE BUKTI</th>
+                    <th style="padding:10px">STATUS VERIFIKASI</th>
+                    <th style="padding:10px">CATATAN</th>
+                    <th style="padding:10px">PERJALANAN</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $hasExpenses = false;
+                foreach ($allMonthBookings as $b):
+                    foreach (($b['expenses'] ?? []) as $ex):
+                        $hasExpenses = true;
+                ?>
+                    <tr>
+                        <td>
+                            <a href="<?= e(base_path('booking_detail.php?id=' . $b['id'])) ?>" style="font-weight:700;color:var(--blue)"><?= e($b['code']) ?></a>
+                        </td>
+                        <td><?= e(tanggal_id($ex['expense_date'])) ?></td>
+                        <td><strong><?= e($ex['category']) ?></strong></td>
+                        <td style="font-weight:700"><?= e(rupiah($ex['amount'])) ?></td>
+                        <td>
+                            <?= $ex['receipt_file'] ? '<a class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" target="_blank" href="' . e(base_path('uploads/nota/' . $ex['receipt_file'])) . '">Preview</a>' : '-' ?>
+                        </td>
+                        <td>
+                            <span class="badge <?= $ex['verified'] ? 'badge-success' : 'badge-warning' ?>" style="font-size:11px">
+                                <?= $ex['verified'] ? 'Terverifikasi' : 'Belum Verifikasi' ?>
+                            </span>
+                        </td>
+                        <td><?= e($ex['note'] ?: '-') ?></td>
+                        <td>
+                            <div style="font-size:12px"><strong><?= e($b['destination']) ?></strong></div>
+                            <div style="font-size:11px;color:var(--muted)"><?= e($b['requester']) ?> (<?= e($b['car_name'] ?? 'Mobil') ?>)</div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+                <?php if (!$hasExpenses): ?>
+                    <tr>
+                        <td colspan="8" style="text-align:center;padding:24px" class="text-muted">
+                            Belum ada realisasi yang tercatat pada bulan ini.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
+
 <div class="modal-backdrop" id="bookingModal">
     <div class="modal">
         <div class="modal-header">
@@ -190,4 +266,5 @@ include __DIR__ . '/templates/sidebar.php';
 </div>
 </main>
 <?php include __DIR__ . '/templates/footer.php'; ?>
+
 

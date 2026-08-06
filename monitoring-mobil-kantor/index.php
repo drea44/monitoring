@@ -79,7 +79,7 @@ if (!empty($_SESSION['user_id'])) {
         <div class="feature-pill">Uang Jalan</div>
         <div class="feature-pill">Dropping Anggaran</div>
         <div class="feature-pill">Report Keuangan</div>
-        <div class="feature-pill">Upload Nota</div>
+        <div class="feature-pill">Upload Realisasi</div>
     </section>
 
     <footer class="landing-footer">© <?= date('Y') ?> Monitoring Mobil Kantor · Sistem Operasional Armada</footer>

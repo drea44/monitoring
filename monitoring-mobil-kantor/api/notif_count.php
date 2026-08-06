@@ -13,15 +13,6 @@ $userId = (int)($user['id'] ?? 0);
 try {
     $allNotifs = [];
 
-    if (is_admin()) {
-        $sum = budget_summary();
-        $totalUsed = (float)($sum['allowance'] ?? 0) + (float)($sum['expense'] ?? 0);
-        $sisa = (float)($sum['dropping'] ?? 0) - $totalUsed;
-        if ($sisa < 10000000) {
-            $allNotifs[] = ['id' => 'budget_warning_' . date('Y-m-d')];
-        }
-    }
-
     $todayBookings = db()->query(
         "SELECT b.id FROM bookings b WHERE b.date = CURDATE() AND b.status IN ('approved', 'running', 'completed')"
     )->fetchAll();
@@ -30,20 +21,11 @@ try {
     }
 
     if (is_admin()) {
-        $recentDrops = db()->query(
-            "SELECT id FROM budget_entries WHERE entry_date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)"
-        )->fetchAll();
-        foreach ($recentDrops as $rd) {
-            $allNotifs[] = ['id' => 'budget_drop_' . $rd['id']];
+        $pendingBookings = db()->query("SELECT b.id FROM bookings b WHERE b.status = 'pending'")->fetchAll();
+        foreach ($pendingBookings as $pb) {
+            $allNotifs[] = ['id' => 'booking_pending_' . $pb['id']];
         }
-    }
 
-    $pendingBookings = db()->query("SELECT b.id FROM bookings b WHERE b.status = 'pending'")->fetchAll();
-    foreach ($pendingBookings as $pb) {
-        $allNotifs[] = ['id' => 'booking_pending_' . $pb['id']];
-    }
-
-    if (is_admin()) {
         $maintenanceCars = db()->query("SELECT plate_number FROM cars WHERE status = 'maintenance'")->fetchAll();
         foreach ($maintenanceCars as $mc) {
             $allNotifs[] = ['id' => 'car_maintenance_' . preg_replace('/[^a-zA-Z0-9]/', '', $mc['plate_number'])];
@@ -54,6 +36,8 @@ try {
             $allNotifs[] = ['id' => 'driver_leave_' . preg_replace('/[^a-zA-Z0-9]/', '', $ld['name'])];
         }
     }
+
+    $pendingBookings = is_admin() ? array_filter($allNotifs, fn($n) => str_starts_with($n['id'], 'booking_pending_')) : [];
 
     $dismissedKeys = [];
     if ($userId > 0) {

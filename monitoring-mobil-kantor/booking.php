@@ -109,13 +109,7 @@ include __DIR__ . '/templates/sidebar.php';
 <style>
 
 .booking-page-wrap {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 20px;
-    align-items: start;
-}
-@media (max-width: 992px) {
-    .booking-page-wrap { grid-template-columns: 1fr; }
+    width: 100%;
 }
 
 .booking-banner {
@@ -281,35 +275,6 @@ include __DIR__ . '/templates/sidebar.php';
 .drp-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 .drp-btn-clear { font-size: 12px; font-weight: 600; color: var(--muted, #64748b); background: none; border: none; cursor: pointer; padding: 4px 8px; }
 .drp-btn-done { font-size: 12px; font-weight: 700; color: #fff; background: var(--blue, #2563ff); border: none; border-radius: 7px; cursor: pointer; padding: 6px 16px; }
-
-.booking-side-panel {
-    position: sticky;
-    top: 20px;
-}
-.side-summary-card {
-    background: var(--surface, #fff);
-    border: 1.5px solid var(--border, #e2eaf4);
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-}
-.side-summary-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--text, #0f172a);
-    margin: 0 0 14px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border, #e2eaf4);
-}
-.side-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-    margin-bottom: 10px;
-}
-.side-item span { color: var(--muted, #64748b); }
-.side-item strong { color: var(--text, #0f172a); font-weight: 700; }
 </style>
 
 <div class="booking-banner">
@@ -320,7 +285,7 @@ include __DIR__ . '/templates/sidebar.php';
     <div class="booking-steps-pills">
         <div class="step-pill active">1. Jadwal</div>
         <div class="step-pill active">2. Rincian</div>
-        <div class="step-pill active">3. Armada</div>
+        <div class="step-pill active">3. Pilih Mobil</div>
     </div>
 </div>
 
@@ -329,13 +294,16 @@ include __DIR__ . '/templates/sidebar.php';
         
         <div class="booking-main-col">
 
+            <!-- SINGLE UNIFIED FORM CARD (TANPA PEMBATAS KARTU SEPARATE) -->
             <div class="form-section-card">
+
+                <!-- SECTION 1: JADWAL & BIDANG PERJALANAN -->
                 <div class="form-section-head">
                     <div class="form-section-num">1</div>
                     <h3 class="form-section-title">Jadwal & Bidang Perjalanan</h3>
                 </div>
 
-                <div class="form-grid">
+                <div class="form-grid" style="margin-bottom: 28px;">
                     <!-- TRIP DATE CARD -->
                     <div class="form-group full drp-wrap" style="margin-bottom:6px">
                         <label style="margin-bottom:8px;display:block">Jadwal Perjalanan</label>
@@ -435,16 +403,14 @@ include __DIR__ . '/templates/sidebar.php';
                         <textarea name="purpose" rows="2" placeholder="Contoh: Meeting client, audit cabang, kunjungan site operasional"><?= e($form['purpose']) ?></textarea>
                     </div>
                 </div>
-            </div>
 
-            <!-- SECTION 2: RINCIAN PENUMPANG & UMK -->
-            <div class="form-section-card">
+                <!-- SECTION 2: RINCIAN PENUMPANG & UMK -->
                 <div class="form-section-head">
                     <div class="form-section-num">2</div>
                     <h3 class="form-section-title">Rincian Penumpang & UMK</h3>
                 </div>
 
-                <div class="form-grid">
+                <div class="form-grid" style="margin-bottom: 28px;">
                     <div class="form-group">
                         <label>Jumlah Penumpang</label>
                         <input class="input" type="number" name="passenger_count" min="1" value="<?= e($form['passenger_count']) ?>" required>
@@ -465,10 +431,8 @@ include __DIR__ . '/templates/sidebar.php';
                         <button class="btn btn-outline btn-sm" type="button" onclick="addPassenger()" style="margin-top:8px">+ Tambah Penumpang</button>
                     </div>
                 </div>
-            </div>
 
-            <!-- SECTION 3: HASIL CEK ARMADA & DRIVER -->
-            <div class="form-section-card">
+                <!-- SECTION 3: PILIH MOBIL & DRIVER READY -->
                 <div class="form-section-head" style="justify-content:space-between">
                     <div style="display:flex;align-items:center;gap:10px">
                         <div class="form-section-num">3</div>
@@ -481,42 +445,24 @@ include __DIR__ . '/templates/sidebar.php';
                         Isi tanggal & jam perjalanan, lalu klik <strong>"Cek Ketersediaan Armada"</strong> untuk memilih mobil dan driver yang ready.
                     </p>
                 </div>
+
+                <!-- ACTION BUTTONS: SIMPAN & RESET FORMULIR -->
+                <div style="display:flex; align-items:center; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid var(--border,#e2eaf4)">
+                    <button class="btn btn-success" type="submit" style="font-size:14px; padding:10px 24px; font-weight:800; display:flex; align-items:center; gap:8px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Simpan
+                    </button>
+                    <button class="btn btn-outline" type="button" onclick="fullResetForm()" style="font-size:14px; padding:10px 20px; font-weight:600">
+                        Reset Formulir
+                    </button>
+                </div>
+
             </div>
 
-        </div>
-
-        <!-- RIGHT COLUMN: STICKY SUMMARY & ACTIONS -->
-        <div class="booking-side-panel">
-            <div class="side-summary-card">
-                <h3 class="side-summary-title">Ringkasan Pengajuan</h3>
-                
-                <div class="side-item">
-                    <span>Pemesan</span>
-                    <strong><?= e(current_user()['name']) ?></strong>
-                </div>
-                <div class="side-item">
-                    <span>Status Awal</span>
-                    <strong style="color:var(--orange,#d97706)">Pending Approval</strong>
-                </div>
-                <div style="height:1px;background:var(--border,#e2eaf4);margin:12px 0"></div>
-
-                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
-                    <div class="side-item" style="margin-bottom:0">
-                        <span>🗓️ Berangkat</span>
-                        <strong id="summaryBerangkat" style="font-size:12px;color:var(--blue,#2563ff)">—</strong>
-                    </div>
-                    <div class="side-item" style="margin-bottom:0">
-                        <span>🏠 Pulang</span>
-                        <strong id="summaryPulang" style="font-size:12px;color:var(--green,#059669)">—</strong>
-                    </div>
-                </div>
-                <div style="height:1px;background:var(--border,#e2eaf4);margin:12px 0"></div>
-
-                <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-                    <button class="btn btn-success" type="submit" style="width:100%;font-size:14px;padding:12px;font-weight:800">Ajukan Permohonan Booking</button>
-                    <button class="btn btn-outline" type="button" onclick="fullResetForm()" style="width:100%;font-size:13px;padding:9px">Reset Formulir</button>
-                </div>
-            </div>
         </div>
 
     </div>
@@ -569,11 +515,6 @@ function calClear() {
     b.textContent = 'Pilih tanggal'; b.className = 'trip-date-empty';
     var p = document.getElementById('displayPulang');
     if (p) { p.textContent = 'Pilih tanggal'; p.className = 'trip-date-empty'; }
-    /* Reset sidebar summary */
-    var sb = document.getElementById('summaryBerangkat');
-    var sp = document.getElementById('summaryPulang');
-    if (sb) sb.textContent = '\u2014';
-    if (sp) sp.textContent = '\u2014';
     renderCal();
 }
 
@@ -581,10 +522,10 @@ function fullResetForm() {
     var form = document.getElementById('bookingForm');
     if (form) form.reset();
     calClear();
-    /* Reset availability result */
+   
     var res = document.getElementById('availabilityResult');
     if (res) res.innerHTML = '<p class="text-muted" style="font-size:13px;margin:0;padding:12px;background:var(--surface-2,#f8fafc);border-radius:10px;border:1px dashed var(--border,#e2eaf4);text-align:center">Isi tanggal &amp; jam perjalanan, lalu klik <strong>"Cek Ketersediaan Armada"</strong> untuk memilih mobil dan driver yang ready.</p>';
-    /* Reset hidden car/driver fields if they exist */
+   
     var carId = document.getElementById('selectedCarId');
     var drvId = document.getElementById('selectedDriverId');
     if (carId) carId.value = '';
@@ -593,18 +534,14 @@ function fullResetForm() {
 
 function calSelect(ds) {
     if (cal.mode === 'start') {
-        /* Picking departure date: DO NOT auto-fill return date */
         cal.startDate = ds;
-        /* If return date is now before departure, reset it */
         if (cal.endDate && cal.endDate < cal.startDate) {
             cal.endDate = '';
         }
         applyDates();
         closeCal();
     } else {
-        /* Picking return date */
         if (ds < cal.startDate) {
-            /* Swap: chosen day is before departure, treat as new departure */
             cal.startDate = ds;
             cal.endDate   = '';
         } else {
@@ -617,7 +554,6 @@ function calSelect(ds) {
 
 function applyDates() {
     document.getElementById('inputDate').value       = cal.startDate;
-    /* Only submit return_date if explicitly chosen; otherwise submit same as start */
     document.getElementById('inputReturnDate').value = cal.endDate || cal.startDate;
 
     var b = document.getElementById('displayBerangkat');
@@ -626,16 +562,9 @@ function applyDates() {
 
     var p = document.getElementById('displayPulang');
     if (p) {
-        /* Show empty state if return date not yet selected */
         p.textContent = cal.endDate ? fmtLong(cal.endDate) : 'Pilih tanggal';
         p.className   = cal.endDate ? 'trip-date-val' : 'trip-date-empty';
     }
-
-    /* Update side panel summary live */
-    var sb = document.getElementById('summaryBerangkat');
-    var sp = document.getElementById('summaryPulang');
-    if (sb) sb.textContent = fmtLong(cal.startDate) || '—';
-    if (sp) sp.textContent = cal.endDate ? fmtLong(cal.endDate) : (cal.startDate ? fmtLong(cal.startDate) + ' (1 hari)' : '—');
 }
 
 function renderCal() {
@@ -679,27 +608,161 @@ function renderCal() {
 
 document.addEventListener('DOMContentLoaded', function () {
     cal.startDate = document.getElementById('inputDate').value;
-    /* Only restore endDate if it differs from startDate (true multi-day trip) */
     var rawEnd = document.getElementById('inputReturnDate').value;
     cal.endDate = (rawEnd && rawEnd !== cal.startDate) ? rawEnd : '';
 
     if (cal.startDate) {
         var b = document.getElementById('displayBerangkat');
         b.textContent = fmtLong(cal.startDate); b.className = 'trip-date-val';
-        /* Update sidebar */
-        var sb = document.getElementById('summaryBerangkat');
-        if (sb) sb.textContent = fmtLong(cal.startDate);
     }
     if (cal.endDate) {
         var p = document.getElementById('displayPulang');
         if (p) { p.textContent = fmtLong(cal.endDate); p.className = 'trip-date-val'; }
-        var sp = document.getElementById('summaryPulang');
-        if (sp) sp.textContent = fmtLong(cal.endDate);
-    } else if (cal.startDate) {
-        var sp2 = document.getElementById('summaryPulang');
-        if (sp2) sp2.textContent = fmtLong(cal.startDate) + ' (1 hari)';
     }
 });
+
+/* =====================================================
+   AVAILABILITY CHECK — Fungsi utama pemilihan armada
+   ===================================================== */
+var CHECK_API = '<?= base_path("api/check_availability.php") ?>';
+
+function addPassenger() {
+    var list = document.getElementById('passengerList');
+    var inp  = document.createElement('input');
+    inp.className   = 'input';
+    inp.name        = 'passengers[]';
+    inp.placeholder = 'Nama penumpang';
+    list.appendChild(inp);
+}
+
+function checkAvailability() {
+    var date       = document.getElementById('inputDate').value;
+    var returnDate = document.getElementById('inputReturnDate').value || date;
+    var startTime  = document.querySelector('[name="start_time"]').value;
+    var endTime    = document.querySelector('[name="end_time"]').value;
+
+    if (!date || !startTime || !endTime) {
+        showAvailMsg('⚠️ Lengkapi tanggal berangkat dan jam terlebih dahulu.', 'warning');
+        return;
+    }
+    if (startTime >= endTime && date === returnDate) {
+        showAvailMsg('⚠️ Jam kembali harus lebih besar dari jam berangkat.', 'warning');
+        return;
+    }
+
+    var btn = document.querySelector('[onclick="checkAvailability()"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Memeriksa...'; }
+
+    var url = CHECK_API + '?date=' + encodeURIComponent(date) +
+              '&return_date=' + encodeURIComponent(returnDate) +
+              '&start_time=' + encodeURIComponent(startTime) +
+              '&end_time=' + encodeURIComponent(endTime);
+
+    fetch(url)
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Cek Ketersediaan Armada'; }
+            if (data.error) {
+                showAvailMsg('❌ ' + data.error, 'danger');
+                return;
+            }
+            renderAvailability(data.cars || [], data.drivers || []);
+        })
+        .catch(function(err) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Cek Ketersediaan Armada'; }
+            showAvailMsg('❌ Gagal terhubung ke server. Coba lagi.', 'danger');
+        });
+}
+
+function showAvailMsg(msg, type) {
+    var colors = {
+        'warning': 'var(--orange-light,#fff7ed)',
+        'danger':  'var(--red-light,#fef2f2)',
+        'info':    'var(--blue-light,#eff6ff)'
+    };
+    var res = document.getElementById('availabilityResult');
+    res.innerHTML = '<p style="font-size:13px;margin:0;padding:14px 16px;background:' + (colors[type]||colors['info']) + ';border-radius:10px;border:1px dashed var(--border,#e2eaf4)">' + msg + '</p>';
+}
+
+function renderAvailability(cars, drivers) {
+    var res = document.getElementById('availabilityResult');
+
+    /* Preserve existing selected car/driver */
+    var selCarId  = (document.getElementById('selectedCarId')  || {}).value || '';
+    var selDrvId  = (document.getElementById('selectedDriverId') || {}).value || '';
+
+    var html = '';
+
+    /* Hidden inputs for form submission */
+    html += '<input type="hidden" id="selectedCarId"    name="car_id"    value="' + escHtml(selCarId) + '">';
+    html += '<input type="hidden" id="selectedDriverId" name="driver_id" value="' + escHtml(selDrvId) + '">';
+
+    /* === MOBIL === */
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);margin-bottom:8px">🚘 Pilih Mobil</div>';
+    if (cars.length === 0) {
+        html += '<p style="font-size:13px;color:var(--muted);padding:10px;background:var(--surface-2,#f8fafc);border-radius:8px;border:1px dashed var(--border)">Tidak ada mobil yang tersedia pada waktu ini.</p>';
+    } else {
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
+        cars.forEach(function(car) {
+            var isSelected = String(selCarId) === String(car.id);
+            html += '<label class="choice-card' + (isSelected ? ' selected' : '') + '" style="cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:12px 14px" onclick="selectCar(' + car.id + ',this)">';
+            html += '<input type="radio" name="_car_choice" value="' + car.id + '"' + (isSelected?' checked':'') + ' style="display:none">';
+            html += '<span style="font-weight:800;font-size:13.5px;color:var(--text)">' + escHtml(car.name) + '</span>';
+            html += '<span style="font-size:11.5px;color:var(--muted)">' + escHtml(car.plate_number) + ' &bull; ' + escHtml(car.capacity) + ' kursi</span>';
+            html += '<span style="font-size:11px;color:var(--green,#059669);font-weight:700">✔ Tersedia</span>';
+            html += '</label>';
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+
+    /* === DRIVER === */
+    html += '<div>';
+    html += '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--green,#059669);margin-bottom:8px">👤 Pilih Driver</div>';
+    if (drivers.length === 0) {
+        html += '<p style="font-size:13px;color:var(--muted);padding:10px;background:var(--surface-2,#f8fafc);border-radius:8px;border:1px dashed var(--border)">Tidak ada driver yang tersedia pada waktu ini.</p>';
+    } else {
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">';
+        drivers.forEach(function(drv) {
+            var isSelected = String(selDrvId) === String(drv.id);
+            html += '<label class="choice-card' + (isSelected ? ' selected' : '') + '" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px" onclick="selectDriver(' + drv.id + ',this)">';
+            html += '<input type="radio" name="_drv_choice" value="' + drv.id + '"' + (isSelected?' checked':'') + ' style="display:none">';
+            html += '<div style="width:34px;height:34px;border-radius:50%;background:var(--blue-light,#eff6ff);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--blue);flex-shrink:0">' + escHtml(drv.name.charAt(0).toUpperCase()) + '</div>';
+            html += '<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--text)">' + escHtml(drv.name) + '</div>';
+            if (drv.phone) html += '<div style="font-size:11.5px;color:var(--muted)">' + escHtml(drv.phone) + '</div>';
+            html += '</div></label>';
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+
+    res.innerHTML = html;
+}
+
+function selectCar(id, labelEl) {
+    /* Deselect all car cards */
+    document.querySelectorAll('#availabilityResult .choice-card').forEach(function(el){
+        if (el.querySelector('[name="_car_choice"]')) el.classList.remove('selected');
+    });
+    labelEl.classList.add('selected');
+    var hidden = document.getElementById('selectedCarId');
+    if (hidden) hidden.value = id;
+}
+
+function selectDriver(id, labelEl) {
+    /* Deselect all driver cards */
+    document.querySelectorAll('#availabilityResult .choice-card').forEach(function(el){
+        if (el.querySelector('[name="_drv_choice"]')) el.classList.remove('selected');
+    });
+    labelEl.classList.add('selected');
+    var hidden = document.getElementById('selectedDriverId');
+    if (hidden) hidden.value = id;
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 </main>
 <?php include __DIR__ . '/templates/footer.php'; ?>

@@ -30,7 +30,7 @@ $kmEnd = parse_km_value($kmEndRaw, 'KM Kembali', $id);
 $carIdInput = array_key_exists('car_id', $_POST) ? (!empty($_POST['car_id']) ? (int)$_POST['car_id'] : null) : null;
 $driverIdInput = array_key_exists('driver_id', $_POST) ? (!empty($_POST['driver_id']) ? (int)$_POST['driver_id'] : null) : null;
 
-$existingBookingStmt = db()->prepare('SELECT date, return_date, start_time, end_time, car_id, driver_id, km_start, km_end FROM bookings WHERE id=?');
+$existingBookingStmt = db()->prepare('SELECT status, date, return_date, start_time, end_time, car_id, driver_id, km_start, km_end FROM bookings WHERE id=?');
 $existingBookingStmt->execute([$id]);
 $existingBooking = $existingBookingStmt->fetch();
 
@@ -38,22 +38,49 @@ $carId = $existingBooking ? $existingBooking['car_id'] : null;
 $driverId = $existingBooking ? $existingBooking['driver_id'] : null;
 
 if ($existingBooking) {
+    $currentStatus = $existingBooking['status'] ?? 'pending';
+
+    // Validate allowed status transitions strictly according to workflow:
+    // pending -> approved, rejected
+    // approved -> running
+    // running -> completed
+    // completed -> (locked, no transition allowed)
+    // rejected -> (locked, no transition allowed)
+    $validNextStatuses = match ($currentStatus) {
+        'pending'  => ['pending', 'approved', 'rejected'],
+        'approved' => ['approved', 'running'],
+        'running'  => ['running', 'completed'],
+        default    => [$currentStatus]
+    };
+
+    if (!in_array($status, $validNextStatuses, true)) {
+        flash('danger', 'Perubahan status dari "' . status_label($currentStatus) . '" ke "' . status_label($status) . '" tidak diperbolehkan.');
+        redirect('booking_detail.php?id=' . $id);
+    }
+
+    // Car and Driver cannot be changed once status is non-pending (approved, running, completed, rejected)
+    if (in_array($currentStatus, ['approved', 'running', 'completed', 'rejected'], true)) {
+        $carId = $existingBooking['car_id'];
+        $driverId = $existingBooking['driver_id'];
+    } else {
+        if (array_key_exists('car_id', $_POST)) {
+            $carId = $carIdInput;
+        }
+        if (array_key_exists('driver_id', $_POST)) {
+            $driverId = $driverIdInput;
+        }
+    }
+
     if ($kmStartRaw === '' && $existingBooking['km_start'] !== null) {
         $kmStart = (int)$existingBooking['km_start'];
     }
     if ($kmEndRaw === '' && $existingBooking['km_end'] !== null) {
         $kmEnd = (int)$existingBooking['km_end'];
     }
-    if (array_key_exists('car_id', $_POST)) {
-        $carId = $carIdInput;
-    }
-    if (array_key_exists('driver_id', $_POST)) {
-        $driverId = $driverIdInput;
-    }
 }
 
 if ($allowance < 0) {
-    flash('danger', 'Uang jalan / uang saku terpakai tidak boleh minus.');
+    flash('danger', 'Uang jalan / uang saku driver tidak boleh bernilai minus.');
     redirect('booking_detail.php?id=' . $id);
 }
 

@@ -4,24 +4,6 @@ $user = current_user();
 $userId = (int)($user['id'] ?? 0);
 
 try {
-    if (is_admin()) {
-        $sum = budget_summary();
-        $sisa = (float)($sum['dropping'] ?? 0) - (float)($sum['allowance'] ?? 0);
-        if ($sisa < 10000000) {
-            $allNotifs[] = [
-                'id' => 'budget_warning_' . date('Y-m-d'),
-                'type' => 'budget_warning',
-                'title' => 'Sisa Anggaran Menipis!',
-                'message' => 'Sisa anggaran tinggal ' . rupiah($sisa) . '. Segera dropping dana baru.',
-                'link' => base_path('budget.php'),
-                'time' => date('Y-m-d'),
-                'badge_class' => 'badge-danger',
-                'badge_label' => 'Critical',
-                'icon' => '🚨'
-            ];
-        }
-    }
-
     $todayBookings = db()->query(
         "SELECT b.id, b.code, b.destination, u.name requester, b.status 
          FROM bookings b 
@@ -48,51 +30,29 @@ try {
         ];
     }
 
+    $pendingBookings = [];
     if (is_admin()) {
-        $recentDrops = db()->query(
-            "SELECT id, amount, reference_no, entry_date 
-             FROM budget_entries 
-             WHERE entry_date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) 
-             ORDER BY created_at DESC 
-             LIMIT 10"
-        )->fetchAll();
-        foreach ($recentDrops as $rd) {
-            $allNotifs[] = [
-                'id' => 'budget_drop_' . $rd['id'],
-                'type' => 'budget_drop',
-                'title' => 'Dropping Anggaran Masuk',
-                'message' => 'Dana masuk ' . rupiah($rd['amount']) . ' (' . $rd['reference_no'] . ')',
-                'link' => base_path('budget.php'),
-                'time' => $rd['entry_date'],
-                'badge_class' => 'badge-success',
-                'badge_label' => 'Dropping',
-                'icon' => '📥'
-            ];
-        }
-    }
-
-    $pendingBookings = db()->query(
-        "SELECT b.id, b.code, b.destination, u.name requester, b.date
+        $pendingBookings = db()->query(
+            "SELECT b.id, b.code, b.destination, u.name requester, b.date
          FROM bookings b
          JOIN users u ON u.id = b.user_id
          WHERE b.status = 'pending'
          ORDER BY b.created_at DESC"
-    )->fetchAll();
-    foreach ($pendingBookings as $pb) {
-        $allNotifs[] = [
-            'id' => 'booking_pending_' . $pb['id'],
-            'type' => 'booking_pending',
-            'title' => 'Pengajuan Booking Baru',
-            'message' => $pb['code'] . ' tujuan ' . $pb['destination'] . ' oleh ' . $pb['requester'],
-            'link' => base_path('booking_detail.php?id=' . $pb['id']),
-            'time' => $pb['date'],
-            'badge_class' => 'badge-warning',
-            'badge_label' => 'Pending',
-            'icon' => '⏳'
-        ];
-    }
+        )->fetchAll();
+        foreach ($pendingBookings as $pb) {
+            $allNotifs[] = [
+                'id' => 'booking_pending_' . $pb['id'],
+                'type' => 'booking_pending',
+                'title' => 'Pengajuan Booking Baru',
+                'message' => $pb['code'] . ' tujuan ' . $pb['destination'] . ' oleh ' . $pb['requester'],
+                'link' => base_path('booking_detail.php?id=' . $pb['id']),
+                'time' => $pb['date'],
+                'badge_class' => 'badge-warning',
+                'badge_label' => 'Pending',
+                'icon' => '⏳'
+            ];
+        }
 
-    if (is_admin()) {
         $maintenanceCars = db()->query("SELECT name, plate_number FROM cars WHERE status = 'maintenance'")->fetchAll();
         foreach ($maintenanceCars as $mc) {
             $allNotifs[] = [
@@ -126,12 +86,10 @@ try {
 } catch (Throwable $e) {}
 
 $typePriority = [
-    'budget_warning' => 1,
-    'booking_pending' => 2,
-    'booking_today' => 3,
-    'budget_drop' => 4,
-    'car_maintenance' => 5,
-    'driver_leave' => 5
+    'booking_pending' => 1,
+    'booking_today' => 2,
+    'car_maintenance' => 3,
+    'driver_leave' => 3
 ];
 
 usort($allNotifs, function($a, $b) use ($typePriority) {
@@ -146,7 +104,9 @@ usort($allNotifs, function($a, $b) use ($typePriority) {
 $dismissedKeys = [];
 if ($userId > 0) {
     try {
-        $dismissedKeys = db()->query("SELECT notif_key FROM notification_dismissals WHERE user_id = $userId")->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $stmtDismiss = db()->prepare("SELECT notif_key FROM notification_dismissals WHERE user_id = ?");
+        $stmtDismiss->execute([$userId]);
+        $dismissedKeys = $stmtDismiss->fetchAll(PDO::FETCH_COLUMN) ?: [];
     } catch (Throwable $e) { $dismissedKeys = []; }
 }
 

@@ -7,7 +7,7 @@ $page_title   = 'Riwayat Booking';
 $page_subtitle = is_admin() ? 'Semua riwayat booking pengguna dalam sistem.' : 'Riwayat booking yang pernah Anda ajukan.';
 
 $filterStatus = $_GET['status'] ?? '';
-$allowedStatus = ['pending','approved','running','completed','rejected'];
+$allowedStatus = ['pending','running','completed'];
 if (!in_array($filterStatus, $allowedStatus)) $filterStatus = '';
 
 $keyword = trim($_GET['q'] ?? '');
@@ -82,7 +82,7 @@ include __DIR__ . '/templates/sidebar.php';
            class="history-tab <?= $filterStatus==='' ? 'active' : '' ?>">
             Semua <span class="tab-count"><?= $totalAll ?></span>
         </a>
-        <?php foreach(['pending'=>'Pending','approved'=>'Disetujui','running'=>'Berjalan','completed'=>'Selesai','rejected'=>'Ditolak'] as $s=>$lbl): ?>
+        <?php foreach(['pending'=>'Menunggu','running'=>'Berjalan','completed'=>'Selesai'] as $s=>$lbl): ?>
         <a href="<?= e(base_path('history.php?status='.$s.($keyword?'&q='.urlencode($keyword):''))) ?>"
            class="history-tab <?= $filterStatus===$s ? 'active' : '' ?>">
             <?= $lbl ?> <span class="tab-count"><?= $counts[$s] ?? 0 ?></span>

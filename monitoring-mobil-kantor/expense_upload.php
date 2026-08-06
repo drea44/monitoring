@@ -18,14 +18,16 @@ if (!$booking) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $allowedCategories = ['BBM', 'Tol', 'Parkir', 'Lainnya'];
     $category = $_POST['category'] ?? 'Lainnya';
+    if (!in_array($category, $allowedCategories, true)) $category = 'Lainnya';
     $amount = (float)preg_replace('/\D/', '', (string)($_POST['amount'] ?? 0));
     $expenseDate = $_POST['expense_date'] ?? date('Y-m-d');
     $note = trim($_POST['note'] ?? '');
     $fileName = null;
 
     if ($amount <= 0) {
-        flash('danger', 'Nominal nota harus lebih dari Rp 0.');
+        flash('danger', 'Nominal realisasi harus lebih dari Rp 0.');
         redirect('expense_upload.php?booking_id=' . $bookingId);
     }
 
@@ -51,26 +53,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = db()->prepare('INSERT INTO expenses (booking_id, category, amount, receipt_file, expense_date, note) VALUES (?, ?, ?, ?, ?, ?)');
     $stmt->execute([$bookingId, $category, $amount, $fileName, $expenseDate, $note]);
 
-    flash('success', 'Nota berhasil diupload sebagai pengeluaran perjalanan.');
+    flash('success', 'Realisasi berhasil disimpan sebagai pengeluaran perjalanan.');
     redirect('booking_detail.php?id=' . $bookingId);
 }
 
-$tripExpense = (float)$booking['fuel_cost'] + (float)$booking['toll_cost'] + (float)$booking['parking_cost'] + (float)$booking['other_cost'];
-$tripUsed = booking_trip_used($booking);
+$stmt = db()->prepare('SELECT COALESCE(SUM(e.amount),0) FROM expenses e WHERE e.booking_id = ?');
+$stmt->execute([$bookingId]);
+$tripExpense = (float)$stmt->fetchColumn();
 
-$title = 'Upload Nota - Monitoring Mobil Kantor';
-$page_title = 'Upload Nota';
+$title = 'Upload Realisasi - Monitoring Mobil Kantor';
+$page_title = 'Upload Realisasi';
 $page_subtitle = 'Upload bukti transaksi untuk BBM, tol, parkir, atau pengeluaran lainnya.';
 include __DIR__ . '/templates/header.php';
 include __DIR__ . '/templates/sidebar.php';
 ?>
 <main class="main">
 <?php include __DIR__ . '/templates/topbar.php'; ?>
-<div class="calendar-toolbar" style="margin-bottom:16px;background:#fff;padding:14px 20px;border-radius:12px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+<div class="calendar-toolbar" style="margin-bottom:16px;background:var(--surface,#fff);padding:14px 20px;border-radius:12px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
     <div style="display:flex;align-items:center;gap:12px">
         <button type="button" class="btn-back-icon" onclick="if(window.history.length > 1 && document.referrer){ history.back(); } else { location.href='<?= e(base_path('booking_detail.php?id=' . $bookingId)) ?>'; }" title="Kembali">‹</button>
         <span style="color:var(--border)">|</span>
-        <span style="font-weight:700;color:var(--text);font-size:14px">Upload Nota Perjalanan <?= e($booking['code']) ?></span>
+        <span style="font-weight:700;color:var(--text);font-size:14px">Upload Realisasi Perjalanan <?= e($booking['code']) ?></span>
     </div>
     <a class="btn btn-outline btn-sm" href="<?= e(base_path('booking_detail.php?id=' . $bookingId)) ?>">Detail Booking</a>
 </div>
@@ -78,7 +81,7 @@ include __DIR__ . '/templates/sidebar.php';
 <section class="grid grid-2">
     <form method="post" enctype="multipart/form-data" class="card">
         <input type="hidden" name="booking_id" value="<?= (int)$bookingId ?>">
-        <h2>Form Upload Nota</h2>
+        <h2>Form Upload Realisasi</h2>
         <div class="form-grid">
             <div class="form-group">
                 <label>Kode Booking</label>
@@ -102,9 +105,9 @@ include __DIR__ . '/templates/sidebar.php';
                 <input class="input" type="number" name="amount" min="0" placeholder="Contoh: 150000" required>
             </div>
             <div class="form-group full">
-                <label>Upload File Nota</label>
+                <label>Upload File Realisasi</label>
                 <label class="dropzone">
-                    Klik untuk pilih file nota<br>
+                    Klik untuk pilih file realisasi<br>
                     <span class="text-muted">JPG, PNG, PDF maksimal 3 MB</span>
                     <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf" style="display:none" onchange="previewUpload(this)">
                 </label>
@@ -116,7 +119,7 @@ include __DIR__ . '/templates/sidebar.php';
             </div>
         </div>
         <div class="actions" style="margin-top:18px">
-            <button class="btn btn-primary" type="submit">Simpan Nota</button>
+            <button class="btn btn-primary" type="submit">Simpan Realisasi</button>
             <a class="btn btn-outline" href="<?= e(base_path('booking_detail.php?id=' . $bookingId)) ?>">Kembali</a>
         </div>
     </form>
@@ -129,8 +132,8 @@ include __DIR__ . '/templates/sidebar.php';
         <div class="kpi-line"><span>Tujuan</span><strong><?= e($booking['destination']) ?></strong></div>
         <div class="kpi-line"><span>Status</span><strong><?= e(status_label($booking['status'])) ?></strong></div>
         <div class="kpi-line"><span>Uang Jalan / Uang Saku Driver</span><strong><?= e(rupiah($booking['allowance'] ?? 0)) ?></strong></div>
-        <div class="kpi-line"><span>Biaya Nota Perjalanan Ini</span><strong><?= e(rupiah($tripExpense)) ?></strong></div>
-        <p class="text-muted" style="margin-top:12px">Halaman ini hanya mencatat nota pengeluaran untuk perjalanan tersebut.</p>
+        <div class="kpi-line"><span>Total Realisasi Perjalanan Ini</span><strong><?= e(rupiah($tripExpense)) ?></strong></div>
+        <p class="text-muted" style="margin-top:12px">Halaman ini hanya mencatat realisasi pengeluaran untuk perjalanan tersebut.</p>
     </div>
 </section>
 </main>

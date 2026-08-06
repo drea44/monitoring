@@ -126,15 +126,6 @@ function set_app_setting(string $key, $value): void
     $stmt->execute([$key, (string) $value]);
 }
 
-function booking_trip_used(array $booking): float
-{
-    return (float)($booking['allowance'] ?? 0)
-        + (float)($booking['fuel_cost'] ?? 0)
-        + (float)($booking['toll_cost'] ?? 0)
-        + (float)($booking['parking_cost'] ?? 0)
-        + (float)($booking['other_cost'] ?? 0);
-}
-
 function budget_total_dropping(): float
 {
     try {
