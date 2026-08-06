@@ -18,6 +18,8 @@ $form = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token($_POST['csrf_token'] ?? null);
+
     $date           = $_POST['date'] ?? '';
     $returnDate     = $_POST['return_date'] ?? $date;
     $start          = $_POST['start_time'] ?? '';
@@ -51,36 +53,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Throwable $e) {}
         }
 
-        $carBusy = false;
-        if ($carId) {
-            $stmtCar = db()->prepare("SELECT 1 FROM bookings
-                WHERE car_id = ?
-                  AND status IN ('pending','approved','running')
-                  AND TIMESTAMP(date, start_time) < TIMESTAMP(?, ?)
-                  AND TIMESTAMP(COALESCE(return_date, date), end_time) > TIMESTAMP(?, ?)");
-            $stmtCar->execute([$carId, $returnDate, $end, $date, $start]);
-            if ($stmtCar->fetchColumn()) $carBusy = true;
-        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $carBusy = false;
+            if ($carId) {
+                $stmtCar = $pdo->prepare("SELECT 1 FROM bookings
+                    WHERE car_id = ?
+                      AND status IN ('pending','approved','running')
+                      AND TIMESTAMP(date, start_time) < TIMESTAMP(?, ?)
+                      AND TIMESTAMP(COALESCE(return_date, date), end_time) > TIMESTAMP(?, ?) FOR UPDATE");
+                $stmtCar->execute([$carId, $returnDate, $end, $date, $start]);
+                if ($stmtCar->fetchColumn()) $carBusy = true;
+            }
 
-        $driverBusy = false;
-        if ($driverId) {
-            $stmtDriver = db()->prepare("SELECT 1 FROM bookings
-                WHERE driver_id = ?
-                  AND status IN ('pending','approved','running')
-                  AND TIMESTAMP(date, start_time) < TIMESTAMP(?, ?)
-                  AND TIMESTAMP(COALESCE(return_date, date), end_time) > TIMESTAMP(?, ?)");
-            $stmtDriver->execute([$driverId, $returnDate, $end, $date, $start]);
-            if ($stmtDriver->fetchColumn()) $driverBusy = true;
-        }
+            $driverBusy = false;
+            if ($driverId) {
+                $stmtDriver = $pdo->prepare("SELECT 1 FROM bookings
+                    WHERE driver_id = ?
+                      AND status IN ('pending','approved','running')
+                      AND TIMESTAMP(date, start_time) < TIMESTAMP(?, ?)
+                      AND TIMESTAMP(COALESCE(return_date, date), end_time) > TIMESTAMP(?, ?) FOR UPDATE");
+                $stmtDriver->execute([$driverId, $returnDate, $end, $date, $start]);
+                if ($stmtDriver->fetchColumn()) $driverBusy = true;
+            }
 
-        if ($carBusy) {
-            flash('danger', 'Mobil yang dipilih sudah memiliki jadwal booking lain pada jam tersebut.');
-        } elseif ($driverBusy) {
-            flash('danger', 'Driver yang dipilih sudah memiliki jadwal tugas lain pada jam tersebut.');
-        } else {
-            $pdo = db();
-            $pdo->beginTransaction();
-            try {
+            if ($carBusy) {
+                $pdo->rollBack();
+                flash('danger', 'Mobil yang dipilih sudah memiliki jadwal booking lain pada jam tersebut.');
+            } elseif ($driverBusy) {
+                $pdo->rollBack();
+                flash('danger', 'Driver yang dipilih sudah memiliki jadwal tugas lain pada jam tersebut.');
+            } else {
                 $stmt = $pdo->prepare("INSERT INTO bookings (code, user_id, department, car_id, driver_id, date, return_date, start_time, end_time, destination, purpose, passenger_count, advance_amount, status)
                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $stmt->execute([booking_code(), current_user()['id'], $department, $carId, $driverId, $date, $returnDate, $start, $end, $destination, $purpose, $passengerCount, $advanceAmount]);
@@ -92,10 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->commit();
                 flash('success', 'Booking berhasil diajukan dan menunggu persetujuan admin.');
                 redirect('booking_detail.php?id=' . $bookingId);
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                flash('danger', 'Gagal menyimpan booking: ' . $e->getMessage());
             }
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            flash('danger', 'Gagal menyimpan booking: ' . $e->getMessage());
         }
     }
 }
@@ -290,6 +294,7 @@ include __DIR__ . '/templates/sidebar.php';
 </div>
 
 <form method="post" id="bookingForm">
+    <?= csrf_field() ?>
     <div class="booking-page-wrap">
         
         <div class="booking-main-col">

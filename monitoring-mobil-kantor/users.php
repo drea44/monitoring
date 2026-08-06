@@ -1,8 +1,9 @@
-<?php
+node -v<?php
 require_once __DIR__ . '/includes/auth.php';
 require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token($_POST['csrf_token'] ?? null);
     $action = $_POST['action'] ?? 'add';
 
     if ($action === 'add') {
@@ -125,6 +126,7 @@ $activeCount = count(array_filter($users, fn($u) => $u['status'] === 'active'));
             <button class="close" onclick="closeModal('userAddModal')">✕</button>
         </div>
         <form method="post" class="form-grid">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="add">
             <div class="form-group"><label>Nama Lengkap</label><input class="input" name="name" placeholder="Nama user" required></div>
             <div class="form-group"><label>Email</label><input class="input" type="email" name="email" placeholder="email@kantor.com" required></div>
@@ -167,6 +169,7 @@ $activeCount = count(array_filter($users, fn($u) => $u['status'] === 'active'));
             <button class="close" onclick="closeModal('userEditModal')">✕</button>
         </div>
         <form method="post" class="form-grid">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" id="editUserId">
             <div class="form-group"><label>Nama Lengkap</label><input class="input" name="name" id="editUserName" required></div>

@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_id'])) {
+    verify_csrf_token($_POST['csrf_token'] ?? null);
     $id = (int)$_POST['verify_id'];
     db()->prepare('UPDATE expenses SET verified=1, verified_at=NOW() WHERE id=?')->execute([$id]);
 

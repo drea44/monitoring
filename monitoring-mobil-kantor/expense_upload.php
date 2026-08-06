@@ -18,6 +18,8 @@ if (!$booking) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token($_POST['csrf_token'] ?? null);
+
     $allowedCategories = ['BBM', 'Tol', 'Parkir', 'Lainnya'];
     $category = $_POST['category'] ?? 'Lainnya';
     if (!in_array($category, $allowedCategories, true)) $category = 'Lainnya';
@@ -80,6 +82,7 @@ include __DIR__ . '/templates/sidebar.php';
 
 <section class="grid grid-2">
     <form method="post" enctype="multipart/form-data" class="card">
+        <?= csrf_field() ?>
         <input type="hidden" name="booking_id" value="<?= (int)$bookingId ?>">
         <h2>Form Upload Realisasi</h2>
         <div class="form-grid">

@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token($_POST['csrf_token'] ?? null);
     $action = $_POST['action'] ?? 'add';
 
     if ($action === 'add') {
@@ -181,6 +182,7 @@ include __DIR__ . '/templates/sidebar.php';
             <button class="close" onclick="closeModal('driverAddModal')">✕</button>
         </div>
         <form method="post" class="form-grid">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="add">
             <div class="form-group"><label>Nama Driver</label><input class="input" name="name" placeholder="Nama lengkap driver" required></div>
             <div class="form-group"><label>No HP</label><input class="input" name="phone" placeholder="0812-xxxx-xxxx"></div>
@@ -209,6 +211,7 @@ include __DIR__ . '/templates/sidebar.php';
             <button class="close" onclick="closeModal('driverEditModal')">✕</button>
         </div>
         <form method="post" class="form-grid">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" id="editDriverId">
             <div class="form-group"><label>Nama Driver</label><input class="input" name="name" id="editDriverName" required></div>
@@ -239,6 +242,7 @@ include __DIR__ . '/templates/sidebar.php';
             <button class="close" onclick="closeModal('driverStatusModal')">✕</button>
         </div>
         <form method="post">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="status">
             <input type="hidden" name="id" id="dStatusDriverId">
             <p style="color:var(--muted);margin:0 0 20px">Driver: <strong id="dStatusDriverName"></strong></p>

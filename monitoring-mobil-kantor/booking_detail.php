@@ -41,9 +41,9 @@ $parkingCost  = array_sum(array_map(fn($x) => $x['category'] === 'Parkir' ? (flo
 $otherCost    = array_sum(array_map(fn($x) => !in_array($x['category'], ['BBM','Tol','Parkir']) ? (float)$x['amount'] : 0, $expenses));
 $allowanceUsed = (float)($booking['allowance'] ?? 0);
 
-$terpakai      = $notaTotal;
-$sisaUang      = max($allowanceUsed - $notaTotal, 0);
-$kekuranganUang = max($notaTotal - $allowanceUsed, 0);
+$terpakai      = round($notaTotal);
+$sisaUang      = max(round($allowanceUsed - $notaTotal), 0);
+$kekuranganUang = max(round($notaTotal - $allowanceUsed), 0);
 
 include __DIR__ . '/templates/header.php';
 include __DIR__ . '/templates/sidebar.php';
@@ -119,7 +119,7 @@ $statusCardClass = match($booking['status']) {
             <div class="detail-item full"><span>Keperluan</span><strong><?= e($booking['purpose'] ?? '-') ?></strong></div>
         </div>
         <h3 style="margin-top:16px">Daftar Penumpang</h3>
-        <p><?= $passengers ? e(implode(', ', array_column($passengers, 'name'))) : '-' ?></p>
+        <p><?= $passengers ? implode(', ', array_map('e', array_column($passengers, 'name'))) : '-' ?></p>
     </div>
     <div class="card">
         <h2>Mobil & Driver</h2>
@@ -173,7 +173,14 @@ $statusCardClass = match($booking['status']) {
             $allDrivers = db()->query("SELECT id, name FROM drivers WHERE status != 'inactive' ORDER BY name")->fetchAll();
             $currentSt = $booking['status'];
             $isNonPending = in_array($currentSt, ['approved', 'running', 'completed', 'rejected'], true);
-            $isFullyLocked = in_array($currentSt, ['completed', 'rejected'], true);
+            // Hanya rejected yang sepenuhnya dikunci (semua field readonly)
+            $isFullyLocked = ($currentSt === 'rejected');
+            // KM dikunci hanya saat rejected
+            $isKmLocked = ($currentSt === 'rejected');
+            // Apakah KM Berangkat wajib diisi?
+            $kmStartRequired = in_array($currentSt, ['running', 'completed'], true);
+            // Apakah KM Kembali wajib diisi?
+            $kmEndRequired = ($currentSt === 'completed');
 
             // Allowed next statuses according to workflow:
             // pending  -> [pending, approved, rejected]
@@ -189,6 +196,7 @@ $statusCardClass = match($booking['status']) {
             };
             ?>
             <form method="post" action="<?= e(base_path('actions_booking.php')) ?>" class="grid" style="margin-top:16px">
+                <?= csrf_field() ?>
                 <input type="hidden" name="booking_id" value="<?= (int)$booking['id'] ?>">
                 <div class="form-grid">
                     <div class="form-group"><label>Status</label>
@@ -235,17 +243,150 @@ $statusCardClass = match($booking['status']) {
                     </div>
                     <div class="form-group"><label>Uang Muka (UMK)</label><input class="input" type="number" min="0" step="1" name="advance_amount" value="<?= (int)$booking['advance_amount'] ?>" <?= $isFullyLocked ? 'readonly style="background:var(--surface);cursor:default"' : '' ?>></div>
                     <div class="form-group"><label>Uang Jalan / Uang Saku Driver</label><input class="input" type="number" min="0" step="any" name="allowance" value="<?= e($allowanceUsed) ?>" <?= $isFullyLocked ? 'readonly style="background:var(--surface);cursor:default"' : '' ?>></div>
-                    <div class="form-group"><label>KM Berangkat</label><input class="input" type="number" min="0" max="999999999999999" step="1" name="km_start" value="<?= e($booking['km_start']) ?>" <?= $isFullyLocked ? 'readonly style="background:var(--surface);cursor:default"' : '' ?>></div>
-                    <div class="form-group"><label>KM Kembali</label><input class="input" type="number" min="0" max="999999999999999" step="1" name="km_end" value="<?= e($booking['km_end']) ?>" <?= $isFullyLocked ? 'readonly style="background:var(--surface);cursor:default"' : '' ?>></div>
+                    <div class="form-group">
+                        <label>KM Berangkat <?= $kmStartRequired ? '<span style="color:var(--red)">*</span>' : '' ?></label>
+                        <input class="input" id="km_start_input" type="number" min="0" max="999999999999999" step="1" name="km_start"
+                            value="<?= e($booking['km_start']) ?>"
+                            <?= $isKmLocked ? 'readonly style="background:var(--surface);cursor:default;color:var(--muted)"' : '' ?>
+                            <?= $kmStartRequired ? 'required' : '' ?>
+                            placeholder="Masukkan odometer berangkat">
+                        <div id="km_start_error" style="color:var(--red,#dc2626);font-size:12px;margin-top:4px;display:none"></div>
+                        <small style="color:var(--muted);font-size:11.5px;margin-top:4px;display:block">
+                            <?php if ($isKmLocked): ?>
+                                🔒 Dikunci — status booking ditolak
+                            <?php elseif ($kmStartRequired): ?>
+                                <span style="color:var(--red,#dc2626);font-weight:600">★ Wajib diisi</span> — status saat ini: <strong><?= e(status_label($currentSt)) ?></strong>
+                            <?php else: ?>
+                                Opsional — boleh diisi sekarang atau nanti
+                            <?php endif; ?>
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>KM Kembali <?= $kmEndRequired ? '<span style="color:var(--red)">*</span>' : '' ?></label>
+                        <input class="input" id="km_end_input" type="number" min="0" max="999999999999999" step="1" name="km_end"
+                            value="<?= e($booking['km_end']) ?>"
+                            <?= $isKmLocked ? 'readonly style="background:var(--surface);cursor:default;color:var(--muted)"' : '' ?>
+                            <?= $kmEndRequired ? 'required' : '' ?>
+                            placeholder="Masukkan odometer kembali">
+                        <div id="km_end_error" style="color:var(--red,#dc2626);font-size:12px;margin-top:4px;display:none"></div>
+                        <small style="color:var(--muted);font-size:11.5px;margin-top:4px;display:block">
+                            <?php if ($isKmLocked): ?>
+                                🔒 Dikunci — status booking ditolak
+                            <?php elseif ($kmEndRequired): ?>
+                                <span style="color:var(--red,#dc2626);font-weight:600">★ Wajib diisi</span> — perjalanan selesai, isi KM akhir
+                            <?php elseif ($currentSt === 'running'): ?>
+                                Opsional — isi jika perjalanan telah selesai
+                            <?php else: ?>
+                                Opsional — boleh diisi sekarang atau nanti
+                            <?php endif; ?>
+                        </small>
+                    </div>
                     <?php if ($currentSt === 'rejected'): ?>
                         <div class="form-group full"><label>Catatan Admin / Alasan Penolakan</label><textarea name="admin_note" readonly style="background:var(--surface);cursor:default"><?= e($booking['admin_note']) ?></textarea></div>
                     <?php endif; ?>
                 </div>
                 <p class="text-muted">Uang jalan yang diinput adalah nominal uang yang diberikan admin kepada driver untuk perjalanan ini.</p>
                 <?php if (!$isFullyLocked): ?>
-                    <button class="btn btn-success" type="submit">Simpan Perubahan</button>
+                    <button class="btn btn-success" type="submit" id="btn_simpan_perubahan">Simpan Perubahan</button>
                 <?php endif; ?>
             </form>
+<script>
+(function() {
+    var form = document.querySelector('form[action*="actions_booking"]');
+    if (!form) return;
+
+    var kmStart = document.getElementById('km_start_input');
+    var kmEnd   = document.getElementById('km_end_input');
+    var errStart = document.getElementById('km_start_error');
+    var errEnd   = document.getElementById('km_end_error');
+
+    function showError(el, msg) {
+        el.style.display = msg ? 'block' : 'none';
+        el.textContent = msg || '';
+    }
+
+    function clearErrors() {
+        showError(errStart, '');
+        showError(errEnd, '');
+    }
+
+    // Cegah input karakter non-angka
+    [kmStart, kmEnd].forEach(function(inp) {
+        if (!inp || inp.readOnly) return;
+        inp.addEventListener('keypress', function(e) {
+            if (!/^[0-9]$/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Enter'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        inp.addEventListener('input', function() {
+            // Hapus karakter non-digit
+            if (this.value !== '' && !/^\d+$/.test(this.value)) {
+                this.value = this.value.replace(/\D/g, '');
+            }
+            // Hapus nilai negatif (min=0 harusnya sudah handle, ini safety net)
+            if (this.value !== '' && parseInt(this.value, 10) < 0) {
+                this.value = 0;
+            }
+            clearErrors();
+        });
+    });
+
+    // Validasi saat blur km_end
+    if (kmEnd && !kmEnd.readOnly) {
+        kmEnd.addEventListener('blur', function() {
+            var start = kmStart && kmStart.value !== '' ? parseInt(kmStart.value, 10) : null;
+            var end   = this.value !== '' ? parseInt(this.value, 10) : null;
+            if (end !== null && start !== null && end < start) {
+                showError(errEnd, 'KM Kembali (' + end + ') tidak boleh lebih kecil dari KM Berangkat (' + start + ').');
+            } else {
+                showError(errEnd, '');
+            }
+        });
+    }
+
+    // Validasi saat form submit
+    form.addEventListener('submit', function(e) {
+        clearErrors();
+        var valid = true;
+
+        var startVal = kmStart && kmStart.value !== '' ? parseInt(kmStart.value, 10) : null;
+        var endVal   = kmEnd   && kmEnd.value   !== '' ? parseInt(kmEnd.value,   10) : null;
+
+        // Validasi negatif
+        if (kmStart && !kmStart.readOnly && startVal !== null && startVal < 0) {
+            showError(errStart, 'KM Berangkat tidak boleh bernilai negatif.');
+            valid = false;
+        }
+        if (kmEnd && !kmEnd.readOnly && endVal !== null && endVal < 0) {
+            showError(errEnd, 'KM Kembali tidak boleh bernilai negatif.');
+            valid = false;
+        }
+
+        // Validasi km_end >= km_start
+        if (startVal !== null && endVal !== null && endVal < startVal) {
+            showError(errEnd, 'KM Kembali (' + endVal + ') tidak boleh lebih kecil dari KM Berangkat (' + startVal + ').');
+            valid = false;
+        }
+
+        // Validasi required (diperkuat JS untuk pesan bahasa Indonesia)
+        if (kmStart && kmStart.required && kmStart.value.trim() === '') {
+            showError(errStart, 'KM Berangkat wajib diisi untuk status ini.');
+            valid = false;
+        }
+        if (kmEnd && kmEnd.required && kmEnd.value.trim() === '') {
+            showError(errEnd, 'KM Kembali wajib diisi untuk status Selesai.');
+            valid = false;
+        }
+
+        if (!valid) {
+            e.preventDefault();
+            // Scroll ke elemen error pertama
+            var firstErr = form.querySelector('#km_start_error[style*="block"], #km_end_error[style*="block"]');
+            if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+})();
+</script>
         <?php endif; ?>
     </div>
 

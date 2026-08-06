@@ -4,6 +4,8 @@ require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') redirect('dashboard.php');
 
+verify_csrf_token($_POST['csrf_token'] ?? null);
+
 $id = (int)($_POST['booking_id'] ?? 0);
 $status = $_POST['status'] ?? 'pending';
 $allowed = ['pending','approved','running','completed','rejected'];
@@ -40,12 +42,7 @@ $driverId = $existingBooking ? $existingBooking['driver_id'] : null;
 if ($existingBooking) {
     $currentStatus = $existingBooking['status'] ?? 'pending';
 
-    // Validate allowed status transitions strictly according to workflow:
-    // pending -> approved, rejected
-    // approved -> running
-    // running -> completed
-    // completed -> (locked, no transition allowed)
-    // rejected -> (locked, no transition allowed)
+
     $validNextStatuses = match ($currentStatus) {
         'pending'  => ['pending', 'approved', 'rejected'],
         'approved' => ['approved', 'running'],
@@ -58,7 +55,7 @@ if ($existingBooking) {
         redirect('booking_detail.php?id=' . $id);
     }
 
-    // Car and Driver cannot be changed once status is non-pending (approved, running, completed, rejected)
+    
     if (in_array($currentStatus, ['approved', 'running', 'completed', 'rejected'], true)) {
         $carId = $existingBooking['car_id'];
         $driverId = $existingBooking['driver_id'];
@@ -68,6 +65,14 @@ if ($existingBooking) {
         }
         if (array_key_exists('driver_id', $_POST)) {
             $driverId = $driverIdInput;
+        }
+    }
+
+    // Validasi alur: tidak boleh disetujui / dijalankan tanpa mobil dan driver
+    if (in_array($status, ['approved', 'running'], true)) {
+        if (empty($carId) || empty($driverId)) {
+            flash('danger', 'Mobil dan Driver wajib ditugaskan sebelum booking disetujui atau dijalankan.');
+            redirect('booking_detail.php?id=' . $id);
         }
     }
 
@@ -98,8 +103,13 @@ try {
         $stmt->execute([$status, $carId, $driverId, $allowance, $kmStart, $kmEnd, $note, $id]);
     }
 
-    if ($status === 'completed' && $kmEnd !== null && $carId > 0) {
-        db()->prepare('UPDATE cars SET last_km=? WHERE id=?')->execute([(int)$kmEnd, (int)$carId]);
+    if ($carId > 0) {
+        $maxKmStmt = db()->prepare("SELECT MAX(km_end) FROM bookings WHERE car_id = ? AND status = 'completed' AND km_end IS NOT NULL");
+        $maxKmStmt->execute([(int)$carId]);
+        $latestKm = $maxKmStmt->fetchColumn();
+        if ($latestKm !== false && $latestKm !== null) {
+            db()->prepare('UPDATE cars SET last_km=? WHERE id=?')->execute([(int)$latestKm, (int)$carId]);
+        }
     }
 
     sync_all_cars_and_drivers_status();
