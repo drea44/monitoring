@@ -1,27 +1,57 @@
 <?php
-const DB_HOST = 'localhost';
-const DB_NAME = 'monitoring_mobil_kantor';
-const DB_USER = 'root';
-const DB_PASS = '';
-const DB_CHARSET = 'utf8mb4';
+// Load .env file jika ada (untuk hosting yang tidak support system env vars)
+require_once __DIR__ . '/env.php';
+
+/**
+ * Ambil nilai environment variable dengan fallback.
+ *
+ * @param string $key      Nama variable
+ * @param string $default  Nilai default jika tidak ada
+ */
+function env(string $key, string $default = ''): string
+{
+    $val = getenv($key);
+    if ($val !== false && $val !== '') {
+        return $val;
+    }
+    return $_ENV[$key] ?? $default;
+}
+
+// ---------------------------------------------------------------
+// Database configuration
+// Nilai dibaca dari environment variable (file .env atau system).
+// Fallback ke XAMPP defaults agar tetap berjalan di lokal.
+// ---------------------------------------------------------------
+define('DB_HOST',    env('DB_HOST',    '127.0.0.1'));
+define('DB_PORT',    env('DB_PORT',    '3306'));
+define('DB_NAME',    env('DB_NAME',    'monitoring_mobil_kantor'));
+define('DB_USER',    env('DB_USER',    'root'));
+define('DB_PASS',    env('DB_PASS',    ''));
+define('DB_CHARSET', env('DB_CHARSET', 'utf8mb4'));
 
 function db(): PDO
 {
     static $pdo = null;
 
     if ($pdo === null) {
-        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+        $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
         $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_EMULATE_PREPARES   => false,
         ];
 
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
             ensure_app_schema($pdo);
         } catch (PDOException $e) {
-            die('Koneksi database gagal. Detail: ' . $e->getMessage());
+            // Fallback ke root tanpa password jika koneksi pertama gagal (XAMPP lokal)
+            try {
+                $pdo = new PDO($dsn, 'root', '', $options);
+                ensure_app_schema($pdo);
+            } catch (PDOException $ex) {
+                die('Koneksi database gagal. Periksa konfigurasi .env atau hubungi administrator.');
+            }
         }
     }
 
@@ -77,4 +107,3 @@ function ensure_app_schema(PDO $pdo): void
     } catch (Throwable $e) {
     }
 }
-

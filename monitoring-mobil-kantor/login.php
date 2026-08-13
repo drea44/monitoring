@@ -30,15 +30,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - Monitoring Mobil Kantor</title>
+    <title>Login - SUCOFINDO FIRST</title>
     <link rel="stylesheet" href="<?= e(base_path('assets/css/style.css')) ?>">
 </head>
 <body class="auth-page">
     <a class="auth-back" href="<?= e(base_path('index.php')) ?>">← Landing Page</a>
     <main class="auth-shell">
         <div class="auth-logo">🚘</div>
-        <h1>MONITORING MOBIL KANTOR</h1>
-        <p>Masuk ke sistem monitoring armada kantor</p>
+        <h1>SUCOFINDO FIRST</h1>
+        <p>Sistem Monitoring Mobil Kantor</p>
 
         <section class="login-card">
             <?php if ($error): ?>

@@ -141,11 +141,7 @@ include __DIR__ . '/templates/sidebar.php';
                     onclick="openDriverEditModal(<?= (int)$driver['id'] ?>, '<?= e(addslashes($driver['name'])) ?>', '<?= e($driver['phone']) ?>', '<?= e($driver['status']) ?>', '<?= e(addslashes($driver['notes'] ?? '')) ?>')">
                     Edit
                 </button>
-                <form method="post" style="display:inline" id="deleteDriverForm<?= (int)$driver['id'] ?>">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="id" value="<?= (int)$driver['id'] ?>">
-                    <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteDriverModal(<?= (int)$driver['id'] ?>, '<?= e(addslashes($driver['name'])) ?>')">Hapus</button>
-                </form>
+                <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteDriverModal(<?= (int)$driver['id'] ?>, '<?= e(addslashes($driver['name'])) ?>')">Hapus</button>
             </div>
             <div class="driver-stats">
                 <div class="driver-stat-item">
@@ -303,34 +299,35 @@ document.querySelectorAll('#driverStatusModal .status-btn-option input, #carStat
 
 <div class="modal-backdrop" id="deleteDriverModal">
     <div class="modal modal-confirm">
-        <div class="modal-confirm-icon">
-            <span class="icon-circle danger">⚠️</span>
-        </div>
-        <h2>Hapus Data Driver</h2>
-        <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
-            Apakah Anda yakin ingin menghapus driver ini dari sistem?
-        </p>
-        <div class="confirm-summary-box">
-            <div class="summary-row">
-                <span class="label">Nama Driver</span>
-                <strong class="val" id="modalDeleteDriverName">-</strong>
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" id="modalDeleteDriverId">
+            <div class="modal-confirm-icon">
+                <span class="icon-circle danger">⚠️</span>
             </div>
-        </div>
-        <div class="actions" style="margin-top:20px;display:flex;gap:10px">
-            <button class="btn btn-outline" type="button" style="flex:1" onclick="closeModal('deleteDriverModal')">Batal</button>
-            <button class="btn btn-danger" type="button" id="modalDeleteDriverSubmitBtn" style="flex:1">Ya, Hapus Driver</button>
-        </div>
+            <h2>Hapus Data Driver</h2>
+            <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
+                Apakah Anda yakin ingin menghapus driver ini dari sistem?
+            </p>
+            <div class="confirm-summary-box">
+                <div class="summary-row">
+                    <span class="label">Nama Driver</span>
+                    <strong class="val" id="modalDeleteDriverName">-</strong>
+                </div>
+            </div>
+            <div class="actions" style="margin-top:20px;display:flex;gap:10px">
+                <button class="btn btn-outline" type="button" style="flex:1" onclick="closeModal('deleteDriverModal')">Batal</button>
+                <button class="btn btn-danger" type="submit" style="flex:1">Ya, Hapus Driver</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
-let activeDeleteDriverFormId = null;
 function openDeleteDriverModal(id, name) {
-    activeDeleteDriverFormId = 'deleteDriverForm' + id;
+    document.getElementById('modalDeleteDriverId').value = id;
     document.getElementById('modalDeleteDriverName').innerText = name;
     openModal('deleteDriverModal');
 }
-document.getElementById('modalDeleteDriverSubmitBtn')?.addEventListener('click', function() {
-    if (activeDeleteDriverFormId) document.getElementById(activeDeleteDriverFormId)?.submit();
-});
 </script>

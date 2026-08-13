@@ -8,8 +8,8 @@ function nav_active(string $file, string $current): string { return $file === $c
             <i class="ph-fill ph-car" style="font-size:24px;color:#fff;"></i>
         </div>
         <div>
-            <strong>MONITORING</strong>
-            <small>Mobil Kantor</small>
+            <strong>SUCOFINDO FIRST</strong>
+            <small>Monitoring Mobil Kantor</small>
         </div>
     </div>
     <nav class="nav">

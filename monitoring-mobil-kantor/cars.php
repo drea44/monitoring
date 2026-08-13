@@ -134,11 +134,7 @@ include __DIR__ . '/templates/sidebar.php';
                                     onclick="openEditModal(<?= (int)$car['id'] ?>, '<?= e(addslashes($car['name'])) ?>', '<?= e($car['plate_number']) ?>', <?= (int)$car['capacity'] ?>, <?= (int)$car['last_km'] ?>, '<?= e($car['status']) ?>', '<?= e(addslashes($car['notes'] ?? '')) ?>')">
                                     Edit
                                 </button>
-                                 <form method="post" style="display:inline" id="deleteCarForm<?= (int)$car['id'] ?>">
-                                     <input type="hidden" name="action" value="delete">
-                                     <input type="hidden" name="id" value="<?= (int)$car['id'] ?>">
-                                     <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteCarModal(<?= (int)$car['id'] ?>, '<?= e(addslashes($car['name'])) ?>', '<?= e(addslashes($car['plate_number'])) ?>')">Hapus</button>
-                                 </form>
+                                <button class="btn btn-sm btn-danger" type="button" onclick="openDeleteCarModal(<?= (int)$car['id'] ?>, '<?= e(addslashes($car['name'])) ?>', '<?= e(addslashes($car['plate_number'])) ?>')">Hapus</button>
                              </div>
                         </td>
                     </tr>
@@ -342,39 +338,40 @@ document.querySelectorAll('.status-btn-option input').forEach(r => {
 
 <div class="modal-backdrop" id="deleteCarModal">
     <div class="modal modal-confirm">
-        <div class="modal-confirm-icon">
-            <span class="icon-circle danger">⚠️</span>
-        </div>
-        <h2>Hapus Armada Mobil</h2>
-        <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
-            Apakah Anda yakin ingin menghapus mobil ini dari armada kantor?
-        </p>
-        <div class="confirm-summary-box">
-            <div class="summary-row">
-                <span class="label">Nama Mobil</span>
-                <strong class="val" id="modalDeleteCarName">-</strong>
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" id="modalDeleteCarId">
+            <div class="modal-confirm-icon">
+                <span class="icon-circle danger">⚠️</span>
             </div>
-            <div class="summary-row">
-                <span class="label">Plat Nomor</span>
-                <strong class="val" id="modalDeleteCarPlate">-</strong>
+            <h2>Hapus Armada Mobil</h2>
+            <p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">
+                Apakah Anda yakin ingin menghapus mobil ini dari armada kantor?
+            </p>
+            <div class="confirm-summary-box">
+                <div class="summary-row">
+                    <span class="label">Nama Mobil</span>
+                    <strong class="val" id="modalDeleteCarName">-</strong>
+                </div>
+                <div class="summary-row">
+                    <span class="label">Plat Nomor</span>
+                    <strong class="val" id="modalDeleteCarPlate">-</strong>
+                </div>
             </div>
-        </div>
-        <div class="actions" style="margin-top:20px;display:flex;gap:10px">
-            <button class="btn btn-outline" type="button" style="flex:1" onclick="closeModal('deleteCarModal')">Batal</button>
-            <button class="btn btn-danger" type="button" id="modalDeleteCarSubmitBtn" style="flex:1">Ya, Hapus Mobil</button>
-        </div>
+            <div class="actions" style="margin-top:20px;display:flex;gap:10px">
+                <button class="btn btn-outline" type="button" style="flex:1" onclick="closeModal('deleteCarModal')">Batal</button>
+                <button class="btn btn-danger" type="submit" style="flex:1">Ya, Hapus Mobil</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
-let activeDeleteCarFormId = null;
 function openDeleteCarModal(id, name, plate) {
-    activeDeleteCarFormId = 'deleteCarForm' + id;
+    document.getElementById('modalDeleteCarId').value = id;
     document.getElementById('modalDeleteCarName').innerText = name;
     document.getElementById('modalDeleteCarPlate').innerText = plate;
     openModal('deleteCarModal');
 }
-document.getElementById('modalDeleteCarSubmitBtn')?.addEventListener('click', function() {
-    if (activeDeleteCarFormId) document.getElementById(activeDeleteCarFormId)?.submit();
-});
 </script>

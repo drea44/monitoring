@@ -57,7 +57,7 @@ try {
         }
     }
 
-    // Destination
+    
     if (array_key_exists('destination', $input)) {
         $destination = trim($input['destination'] ?? '');
         $destination = $destination !== '' ? $destination : $existingRow['destination'];
@@ -78,7 +78,7 @@ try {
         $advanceAmt = (float)$existingRow['advance_amount'];
     }
 
-    // Durasi Hari
+    
     if (array_key_exists('durasi', $input) && !empty($input['durasi'])) {
         $durasiHari = max(1, (int)$input['durasi']);
         $dateStart  = new DateTime($startDate);
@@ -90,7 +90,7 @@ try {
     $stmt = db()->prepare('UPDATE bookings SET driver_id=?, destination=?, return_date=?, advance_amount=?, allowance=? WHERE id=?');
     $stmt->execute([$driverId, $destination, $returnDate, $advanceAmt, $allowance, $id]);
 
-    // Realisasi Nota
+    
     $updateRealisasi = array_key_exists('realisasi', $input) || array_key_exists('nota_total', $input);
     if ($updateRealisasi) {
         $realisasiAmount = (float)($input['realisasi'] ?? $input['nota_total'] ?? 0);

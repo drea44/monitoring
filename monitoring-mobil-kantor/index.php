@@ -12,14 +12,14 @@ if (!empty($_SESSION['user_id'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Monitoring Mobil Kantor</title>
+    <title>SUCOFINDO FIRST — Monitoring Mobil Kantor</title>
     <link rel="stylesheet" href="<?= e(base_path('assets/css/style.css')) ?>">
 </head>
 <body class="landing-page">
     <header class="landing-nav">
         <a class="landing-brand" href="<?= e(base_path('index.php')) ?>">
             <span class="brand-symbol">🚘</span>
-            <strong>MONITORING MOBIL KANTOR</strong>
+            <strong>SUCOFINDO FIRST</strong>
         </a>
         <a class="btn btn-ghost-light" href="<?= e(base_path('login.php')) ?>">Masuk / Login <span>→</span></a>
     </header>

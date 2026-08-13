@@ -1,10 +1,21 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
+    if (!headers_sent()) {
+        session_set_cookie_params([
+            'lifetime' => 86400,
+            'path'     => '/',
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+    }
     session_start();
 }
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/helpers.php';
+
+// Pastikan token CSRF selalu terinisialisasi dalam session sejak request pertama
+csrf_token();
 
 function current_user(): ?array
 {
